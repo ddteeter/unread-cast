@@ -31,6 +31,40 @@ describe('scheduler', () => {
   });
 
   describe('lock management', () => {
+    it('should fail to acquire lock when lock row does not exist', async () => {
+      // Delete the lock row
+      db.prepare('DELETE FROM processing_lock WHERE id = 1').run();
+
+      const mockProcessEntry = vi.fn();
+      const mockBudgetService = { getStatus: vi.fn(), canProcess: vi.fn() };
+      const mockPushoverService = { sendBudgetWarning: vi.fn(), sendBudgetExceeded: vi.fn() };
+
+      const scheduler = createScheduler(
+        {
+          db,
+          budgetService: mockBudgetService as any,
+          pushoverService: mockPushoverService as any,
+          processEntry: mockProcessEntry,
+        },
+        {
+          cronSchedule: '0 */6 * * *',
+          cleanupSchedule: '0 0 * * *',
+          tempDir: '/tmp',
+          retentionDays: 90,
+          budgetWarningPercent: 80,
+        }
+      );
+
+      await scheduler.runProcessingJob();
+
+      // Should not process anything
+      expect(mockBudgetService.getStatus).not.toHaveBeenCalled();
+      expect(mockProcessEntry).not.toHaveBeenCalled();
+
+      // Re-initialize lock row for other tests
+      db.prepare('INSERT INTO processing_lock (id) VALUES (1)').run();
+    });
+
     it('should acquire lock when available', async () => {
       const mockProcessEntry = vi.fn().mockResolvedValue({ success: true, entryId: 'test-id' });
       const mockBudgetService = {
@@ -44,8 +78,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -84,8 +118,8 @@ describe('scheduler', () => {
         canProcess: vi.fn(),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -131,8 +165,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -181,8 +215,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -240,8 +274,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -299,8 +333,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -342,8 +376,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -403,8 +437,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -451,8 +485,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(false),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -513,8 +547,8 @@ describe('scheduler', () => {
         }),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -553,8 +587,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -593,8 +627,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(false),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -620,6 +654,81 @@ describe('scheduler', () => {
       expect(mockPushoverService.sendBudgetWarning).not.toHaveBeenCalled();
     });
 
+    it('should handle budget service errors gracefully', async () => {
+      const mockProcessEntry = vi.fn();
+      const mockBudgetService = {
+        getStatus: vi.fn().mockRejectedValue(new Error('Budget service unavailable')),
+        canProcess: vi.fn().mockResolvedValue(true),
+      };
+      const mockPushoverService = {
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const scheduler = createScheduler(
+        {
+          db,
+          budgetService: mockBudgetService as any,
+          pushoverService: mockPushoverService as any,
+          processEntry: mockProcessEntry,
+        },
+        {
+          cronSchedule: '0 */6 * * *',
+          cleanupSchedule: '0 0 * * *',
+          tempDir: '/tmp',
+          retentionDays: 90,
+          budgetWarningPercent: 80,
+        }
+      );
+
+      await scheduler.runProcessingJob();
+
+      // Should not crash, should continue processing
+      expect(mockBudgetService.getStatus).toHaveBeenCalled();
+      expect(mockPushoverService.sendBudgetWarning).not.toHaveBeenCalled();
+      expect(mockPushoverService.sendBudgetExceeded).not.toHaveBeenCalled();
+    });
+
+    it('should handle pushover notification failures gracefully', async () => {
+      const mockProcessEntry = vi.fn();
+      const mockBudgetService = {
+        getStatus: vi.fn().mockResolvedValue({
+          status: 'warning',
+          processing_enabled: true,
+          percent_used: 85,
+          spent_usd: 8.5,
+          budget_usd: 10,
+        }),
+        canProcess: vi.fn().mockResolvedValue(true),
+      };
+      const mockPushoverService = {
+        sendBudgetWarning: vi.fn().mockRejectedValue(new Error('Pushover API failed')),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const scheduler = createScheduler(
+        {
+          db,
+          budgetService: mockBudgetService as any,
+          pushoverService: mockPushoverService as any,
+          processEntry: mockProcessEntry,
+        },
+        {
+          cronSchedule: '0 */6 * * *',
+          cleanupSchedule: '0 0 * * *',
+          tempDir: '/tmp',
+          retentionDays: 90,
+          budgetWarningPercent: 80,
+        }
+      );
+
+      await scheduler.runProcessingJob();
+
+      // Should not crash despite notification failure
+      expect(mockPushoverService.sendBudgetWarning).toHaveBeenCalled();
+      expect(mockBudgetService.getStatus).toHaveBeenCalled();
+    });
+
     it('should only send budget notifications on status transitions', async () => {
       const mockProcessEntry = vi.fn();
       const mockBudgetService = {
@@ -633,8 +742,8 @@ describe('scheduler', () => {
         canProcess: vi.fn().mockResolvedValue(true),
       };
       const mockPushoverService = {
-        sendBudgetWarning: vi.fn(),
-        sendBudgetExceeded: vi.fn(),
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
       };
 
       const scheduler = createScheduler(
@@ -716,6 +825,52 @@ describe('scheduler', () => {
       const episodes = db.prepare('SELECT * FROM episodes').all();
       expect(episodes).toHaveLength(1);
       expect((episodes[0] as any).title).toBe('Recent Episode');
+    });
+
+    it('should skip stuck entry reset when processing job is running', async () => {
+      // Create stuck entry
+      const entryId = uuidv4();
+      db.prepare(
+        `INSERT INTO entries (id, url, category, status, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(entryId, 'https://example.com/article', 'default', 'processing', new Date().toISOString());
+
+      // Acquire lock to simulate processing job running
+      const now = new Date().toISOString();
+      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1')
+        .run(now, 'test-host');
+
+      const mockProcessEntry = vi.fn();
+      const mockBudgetService = { getStatus: vi.fn(), canProcess: vi.fn() };
+      const mockPushoverService = {
+        sendBudgetWarning: vi.fn().mockResolvedValue(undefined),
+        sendBudgetExceeded: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const scheduler = createScheduler(
+        {
+          db,
+          budgetService: mockBudgetService as any,
+          pushoverService: mockPushoverService as any,
+          processEntry: mockProcessEntry,
+        },
+        {
+          cronSchedule: '0 */6 * * *',
+          cleanupSchedule: '0 0 * * *',
+          tempDir: '/tmp',
+          retentionDays: 90,
+          budgetWarningPercent: 80,
+        }
+      );
+
+      await scheduler.runCleanupJob();
+
+      // Should NOT have reset entry (lock is held)
+      const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+      expect(entry.status).toBe('processing'); // Still processing
+
+      // Release lock for other tests
+      db.prepare('UPDATE processing_lock SET locked_at = NULL, locked_by = NULL WHERE id = 1').run();
     });
 
     it('should reset stuck processing entries', async () => {

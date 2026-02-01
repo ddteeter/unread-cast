@@ -30,25 +30,33 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
   let previousBudgetStatus: 'ok' | 'warning' | 'exceeded' = 'ok';
 
   function acquireLock(): boolean {
-    const now = new Date().toISOString();
+    // First check if lock row exists
     const lockRow = db.prepare('SELECT * FROM processing_lock WHERE id = 1').get() as {
       locked_at: string | null;
       locked_by: string | null;
     } | undefined;
 
-    if (lockRow?.locked_at) {
-      const lockAge = Date.now() - new Date(lockRow.locked_at).getTime();
-      if (lockAge < LOCK_TIMEOUT_MS) {
-        console.log('Processing already in progress, skipping');
-        return false;
-      }
-      console.log('Stale lock detected, taking over');
+    if (!lockRow) {
+      console.error('Processing lock row not initialized in database');
+      return false;
     }
 
-    db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1')
-      .run(now, hostname());
+    // Atomic compare-and-swap: only update if lock is NULL or stale
+    const now = new Date().toISOString();
+    const staleThreshold = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
 
-    return true;
+    const result = db.prepare(`
+      UPDATE processing_lock
+      SET locked_at = ?, locked_by = ?
+      WHERE id = 1
+        AND (locked_at IS NULL OR locked_at < ?)
+    `).run(now, hostname(), staleThreshold);
+
+    const acquired = result.changes > 0;
+    if (!acquired) {
+      console.log('Processing already in progress, skipping');
+    }
+    return acquired;
   }
 
   function releaseLock(): void {
@@ -62,21 +70,35 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
 
     try {
       // Check budget status and send warnings
-      const status = await budgetService.getStatus();
+      let canProceed = true;
+      try {
+        const status = await budgetService.getStatus();
 
-      if (status.status === 'warning' && previousBudgetStatus === 'ok') {
-        await pushoverService.sendBudgetWarning(
-          status.percent_used,
-          status.spent_usd,
-          status.budget_usd
-        );
-      } else if (status.status === 'exceeded' && previousBudgetStatus !== 'exceeded') {
-        await pushoverService.sendBudgetExceeded(status.spent_usd, status.budget_usd);
+        if (status.status === 'warning' && previousBudgetStatus === 'ok') {
+          await pushoverService.sendBudgetWarning(
+            status.percent_used,
+            status.spent_usd,
+            status.budget_usd
+          ).catch(err => {
+            console.error('Failed to send budget warning:', err);
+          });
+        } else if (status.status === 'exceeded' && previousBudgetStatus !== 'exceeded') {
+          await pushoverService.sendBudgetExceeded(status.spent_usd, status.budget_usd)
+            .catch(err => {
+              console.error('Failed to send budget exceeded notification:', err);
+            });
+        }
+        previousBudgetStatus = status.status;
+
+        if (!status.processing_enabled) {
+          console.log('Budget exceeded, skipping processing');
+          canProceed = false;
+        }
+      } catch (error) {
+        console.error('Failed to check budget status, proceeding with caution:', error);
       }
-      previousBudgetStatus = status.status;
 
-      if (!status.processing_enabled) {
-        console.log('Budget exceeded, skipping processing');
+      if (!canProceed) {
         return;
       }
 
@@ -139,13 +161,21 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
 
     console.log(`Deleted ${deleted.changes} old episodes`);
 
-    // Reset stuck processing entries
-    const resetResult = db.prepare(
-      "UPDATE entries SET status = 'pending' WHERE status = 'processing'"
-    ).run();
+    // Reset stuck processing entries (requires lock to avoid race with processing job)
+    if (acquireLock()) {
+      try {
+        const resetResult = db.prepare(
+          "UPDATE entries SET status = 'pending' WHERE status = 'processing'"
+        ).run();
 
-    if (resetResult.changes > 0) {
-      console.log(`Reset ${resetResult.changes} stuck entries`);
+        if (resetResult.changes > 0) {
+          console.log(`Reset ${resetResult.changes} stuck entries`);
+        }
+      } finally {
+        releaseLock();
+      }
+    } else {
+      console.log('Skipping stuck entry reset - processing job is running');
     }
 
     // Clean orphaned temp files older than 24 hours
