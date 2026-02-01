@@ -91,7 +91,6 @@ describe('processing pipeline', () => {
       cleanupSegments: vi.fn(),
     };
     const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(true),
       calculateCost: vi.fn().mockReturnValue(0.05),
       logUsage: vi.fn().mockResolvedValue(undefined),
     };
@@ -116,11 +115,12 @@ describe('processing pipeline', () => {
       {
         minContentLength: 500,
         maxRetries: 3,
-        baseRetryDelayMs: 1000,
       }
     );
 
-    const result = await pipeline.processEntry(entryId);
+    // Get entry object to pass to processEntry
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
 
     // Verify success
     expect(result.success).toBe(true);
@@ -128,7 +128,6 @@ describe('processing pipeline', () => {
     expect(result.episodeId).toBeDefined();
 
     // Verify all steps were called in order
-    expect(mockBudgetService.canProcess).toHaveBeenCalled();
     expect(mockFetchHtml).toHaveBeenCalledWith('https://example.com/article');
     expect(mockExtractContent).toHaveBeenCalled();
     expect(mockTranscriber.generateTranscript).toHaveBeenCalled();
@@ -140,12 +139,12 @@ describe('processing pipeline', () => {
     expect(mockBudgetService.logUsage).toHaveBeenCalledTimes(2); // transcript + TTS
 
     // Verify entry was updated to completed
-    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
-    expect(entry.status).toBe('completed');
-    expect(entry.title).toBe('Test Article');
-    expect(entry.extracted_content).toContain('This is a long enough');
-    expect(entry.transcript_json).toBeDefined();
-    expect(entry.processed_at).toBeDefined();
+    const updatedEntry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    expect(updatedEntry.status).toBe('completed');
+    expect(updatedEntry.title).toBe('Test Article');
+    expect(updatedEntry.extracted_content).toContain('This is a long enough');
+    expect(updatedEntry.transcript_json).toBeDefined();
+    expect(updatedEntry.processed_at).toBeDefined();
 
     // Verify episode was created
     const episode = db.prepare('SELECT * FROM episodes WHERE entry_id = ?').get(entryId) as any;
@@ -156,123 +155,7 @@ describe('processing pipeline', () => {
     expect(episode.audio_size).toBe(1024000);
   });
 
-  it('should fail when budget exceeded', async () => {
-    const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(false),
-      calculateCost: vi.fn(),
-      logUsage: vi.fn(),
-    };
-
-    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
-    const pipeline = createProcessingPipeline(
-      db,
-      mockBudgetService as any,
-      {} as any,
-      vi.fn() as any,
-      vi.fn() as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      { minContentLength: 500, maxRetries: 3, baseRetryDelayMs: 1000 }
-    );
-
-    const result = await pipeline.processEntry(entryId);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Budget exceeded');
-
-    // Verify entry was not updated to processing
-    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
-    expect(entry.status).toBe('pending');
-  });
-
-  it('should handle failures with retry logic', async () => {
-    const mockFetchHtml = vi.fn().mockRejectedValue(new Error('Network error'));
-    const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(true),
-    };
-    const mockPushoverService = {
-      sendProcessingFailed: vi.fn().mockResolvedValue(undefined),
-    };
-
-    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
-    const pipeline = createProcessingPipeline(
-      db,
-      mockBudgetService as any,
-      mockPushoverService as any,
-      mockFetchHtml,
-      vi.fn() as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      { minContentLength: 500, maxRetries: 3, baseRetryDelayMs: 1000 }
-    );
-
-    const result = await pipeline.processEntry(entryId);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Network error');
-
-    // Verify entry was updated with retry info
-    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
-    expect(entry.status).toBe('failed');
-    expect(entry.retry_count).toBe(1);
-    expect(entry.next_retry_at).toBeDefined();
-    expect(entry.error_message).toBe('Network error');
-
-    // Calculate expected retry time with exponential backoff
-    // First retry: baseDelay * 2^0 = 1000ms
-    const nextRetry = new Date(entry.next_retry_at).getTime();
-    const now = Date.now();
-    const expectedDelay = 1000; // Base delay for first retry
-    const jitterRange = expectedDelay * 0.1; // 10% jitter
-    expect(nextRetry).toBeGreaterThan(now + expectedDelay - jitterRange);
-    expect(nextRetry).toBeLessThan(now + expectedDelay * 2 + jitterRange);
-  });
-
-  it('should send notification after max retries exceeded', async () => {
-    // Setup entry that has already failed twice
-    db.prepare('UPDATE entries SET retry_count = ? WHERE id = ?').run(2, entryId);
-
-    const mockFetchHtml = vi.fn().mockRejectedValue(new Error('Persistent error'));
-    const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(true),
-    };
-    const mockPushoverService = {
-      sendProcessingFailed: vi.fn().mockResolvedValue(undefined),
-    };
-
-    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
-    const pipeline = createProcessingPipeline(
-      db,
-      mockBudgetService as any,
-      mockPushoverService as any,
-      mockFetchHtml,
-      vi.fn() as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      { minContentLength: 500, maxRetries: 3, baseRetryDelayMs: 1000 }
-    );
-
-    const result = await pipeline.processEntry(entryId);
-
-    expect(result.success).toBe(false);
-
-    // Verify retry count was incremented to max
-    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
-    expect(entry.retry_count).toBe(3);
-    expect(entry.next_retry_at).toBeNull(); // No more retries
-
-    // Verify notification was sent
-    expect(mockPushoverService.sendProcessingFailed).toHaveBeenCalledWith(
-      entryId,
-      'https://example.com/article',
-      'Persistent error'
-    );
-  });
-
-  it('should cleanup temp files on failure', async () => {
+  it('should not cleanup segments on failure', async () => {
     const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Article</body></html>');
     const mockExtractContent = vi.fn().mockResolvedValue({
       title: 'Test',
@@ -295,7 +178,6 @@ describe('processing pipeline', () => {
       cleanupSegments: vi.fn(),
     };
     const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(true),
       calculateCost: vi.fn().mockReturnValue(0.05),
       logUsage: vi.fn().mockResolvedValue(undefined),
     };
@@ -316,12 +198,166 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3, baseRetryDelayMs: 1000 }
+      { minContentLength: 500, maxRetries: 3 }
     );
 
-    const result = await pipeline.processEntry(entryId);
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
 
     expect(result.success).toBe(false);
+    // Segments should NOT be cleaned up on failure - kept for retry
+    expect(mockAudioMerger.cleanupSegments).not.toHaveBeenCalled();
+  });
+
+  it('should handle failures with retry logic', async () => {
+    const mockFetchHtml = vi.fn().mockRejectedValue(new Error('Network error'));
+    const mockBudgetService = {
+      calculateCost: vi.fn(),
+      logUsage: vi.fn(),
+    };
+    const mockPushoverService = {
+      sendProcessingFailed: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
+    const pipeline = createProcessingPipeline(
+      db,
+      mockBudgetService as any,
+      mockPushoverService as any,
+      mockFetchHtml,
+      vi.fn() as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { minContentLength: 500, maxRetries: 3 }
+    );
+
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Network error');
+
+    // Verify entry was updated with retry info
+    const updatedEntry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    expect(updatedEntry.status).toBe('failed');
+    expect(updatedEntry.retry_count).toBe(1);
+    expect(updatedEntry.next_retry_at).toBeDefined();
+    expect(updatedEntry.error_message).toBe('Network error');
+
+    // Calculate expected retry time with exponential backoff
+    // First retry (retryCount=0): baseMinutes = 2^0 = 1 minute = 60 seconds
+    // Plus 0-30 seconds jitter
+    const nextRetry = new Date(updatedEntry.next_retry_at).getTime();
+    const now = Date.now();
+    const baseDelayMs = 1 * 60 * 1000; // 1 minute in ms
+    const maxJitterMs = 30 * 1000; // 30 seconds in ms
+    expect(nextRetry).toBeGreaterThanOrEqual(now + baseDelayMs);
+    expect(nextRetry).toBeLessThan(now + baseDelayMs + maxJitterMs);
+  });
+
+  it('should send notification after max retries exceeded', async () => {
+    // Setup entry that has already failed twice
+    db.prepare('UPDATE entries SET retry_count = ? WHERE id = ?').run(2, entryId);
+
+    const mockFetchHtml = vi.fn().mockRejectedValue(new Error('Persistent error'));
+    const mockBudgetService = {
+      calculateCost: vi.fn(),
+      logUsage: vi.fn(),
+    };
+    const mockPushoverService = {
+      sendProcessingFailed: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
+    const pipeline = createProcessingPipeline(
+      db,
+      mockBudgetService as any,
+      mockPushoverService as any,
+      mockFetchHtml,
+      vi.fn() as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { minContentLength: 500, maxRetries: 3 }
+    );
+
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
+
+    expect(result.success).toBe(false);
+
+    // Verify retry count was incremented to max
+    const updatedEntry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    expect(updatedEntry.retry_count).toBe(3);
+    expect(updatedEntry.next_retry_at).toBeNull(); // No more retries
+
+    // Verify notification was sent
+    expect(mockPushoverService.sendProcessingFailed).toHaveBeenCalledWith(
+      entryId,
+      'https://example.com/article',
+      'Persistent error'
+    );
+  });
+
+  it('should cleanup segments only on success', async () => {
+    const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Article content</body></html>');
+    const mockExtractContent = vi.fn().mockResolvedValue({
+      title: 'Test Article',
+      content: 'This is a long enough article content that should pass validation. '.repeat(50),
+    });
+    const mockTranscriber = {
+      generateTranscript: vi.fn().mockResolvedValue({
+        transcript: [
+          { speaker: 'NARRATOR', text: 'Welcome to the podcast', instruction: 'Clear and engaging' },
+        ],
+        usage: { inputTokens: 1000, outputTokens: 500 },
+      }),
+    };
+    const mockTTSProcessor = {
+      processTranscript: vi.fn().mockResolvedValue({
+        segmentFiles: [join(tempDir, `${entryId}_0.aac`)],
+        totalUsage: { characters: 1000 },
+      }),
+    };
+    const mockAudioMerger = {
+      mergeAndUpload: vi.fn().mockResolvedValue({
+        audioKey: 'episode.aac',
+        audioUrl: 'https://r2.example.com/episode.aac',
+        audioDuration: 120,
+        audioSize: 1024000,
+      }),
+      cleanupSegments: vi.fn(),
+    };
+    const mockBudgetService = {
+      calculateCost: vi.fn().mockReturnValue(0.05),
+      logUsage: vi.fn().mockResolvedValue(undefined),
+    };
+    const mockPushoverService = {
+      sendProcessingFailed: vi.fn(),
+    };
+
+    // Create segment file
+    writeFileSync(join(tempDir, `${entryId}_0.aac`), 'fake audio');
+
+    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
+    const pipeline = createProcessingPipeline(
+      db,
+      mockBudgetService as any,
+      mockPushoverService as any,
+      mockFetchHtml,
+      mockExtractContent,
+      mockTranscriber as any,
+      mockTTSProcessor as any,
+      mockAudioMerger as any,
+      { minContentLength: 500, maxRetries: 3 }
+    );
+
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
+
+    expect(result.success).toBe(true);
+    // Segments should be cleaned up on success
     expect(mockAudioMerger.cleanupSegments).toHaveBeenCalled();
   });
 
@@ -357,7 +393,6 @@ describe('processing pipeline', () => {
       cleanupSegments: vi.fn(),
     };
     const mockBudgetService = {
-      canProcess: vi.fn().mockResolvedValue(true),
       calculateCost: vi.fn().mockReturnValue(0.05),
       logUsage: vi.fn().mockResolvedValue(undefined),
     };
@@ -377,10 +412,11 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3, baseRetryDelayMs: 1000 }
+      { minContentLength: 500, maxRetries: 3 }
     );
 
-    const result = await pipeline.processEntry(entryId);
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
 
     expect(result.success).toBe(true);
     expect(mockTranscriber.extractContentWithLLM).toHaveBeenCalled();

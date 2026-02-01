@@ -10,11 +10,10 @@ import type { LLMUsage } from '../services/openai.js';
 export interface PipelineConfig {
   minContentLength: number;
   maxRetries: number;
-  baseRetryDelayMs: number;
 }
 
 export interface ProcessingPipeline {
-  processEntry(entryId: string): Promise<ProcessingResult>;
+  processEntry(entry: Entry): Promise<ProcessingResult>;
 }
 
 // Type definitions for processing modules
@@ -65,131 +64,113 @@ export function createProcessingPipeline(
   audioMerger: AudioMerger,
   config: PipelineConfig
 ): ProcessingPipeline {
-  async function processEntry(entryId: string): Promise<ProcessingResult> {
+  function calculateNextRetryAt(retryCount: number): string {
+    // retryCount is the number of times we've already tried (and failed)
+    // For first retry (retryCount=0), use 2^0=1 minute
+    const baseMinutes = Math.pow(2, retryCount); // 1, 2, 4, 8, 16
+    const jitterSeconds = Math.floor(Math.random() * 30);
+    const delayMs = (baseMinutes * 60 + jitterSeconds) * 1000;
+    return new Date(Date.now() + delayMs).toISOString();
+  }
+
+  async function processEntry(entry: Entry): Promise<ProcessingResult> {
+    const entryId = entry.id;
     let segmentFiles: string[] = [];
 
     try {
-      // Step 1: Check budget
-      const canProcess = await budgetService.canProcess();
-      if (!canProcess) {
-        return {
-          success: false,
-          entryId,
-          error: 'Budget exceeded - processing paused',
-        };
-      }
-
-      // Get entry
-      const entry = db
-        .prepare('SELECT * FROM entries WHERE id = ?')
-        .get(entryId) as Entry | undefined;
-
-      if (!entry) {
-        return {
-          success: false,
-          entryId,
-          error: 'Entry not found',
-        };
-      }
-
-      // Step 2: Set entry status to processing
+      // Mark as processing
       db.prepare('UPDATE entries SET status = ? WHERE id = ?').run('processing', entryId);
 
-      // Step 3: Fetch HTML
+      // Step 1: Fetch HTML
       const html = await fetchHtml(entry.url);
 
-      // Step 4: Extract content (Readability + LLM fallback if needed)
-      let extractedTitle = '';
-      let extractedContent = '';
-      let extractionUsage: LLMUsage | null = null;
+      // Step 2: Extract content
+      let { title, content } = await extractContent(html);
 
-      const readabilityResult = await extractContent(html);
-
-      if (
-        !readabilityResult.content ||
-        readabilityResult.content.length < config.minContentLength
-      ) {
-        // Fallback to LLM extraction
+      // Fallback to LLM if content too short
+      if (content.length < config.minContentLength) {
         const llmResult = await transcriber.extractContentWithLLM(html);
-        extractedContent = llmResult.content;
-        extractedTitle = readabilityResult.title || 'Untitled';
-        extractionUsage = llmResult.usage;
+        content = llmResult.content;
 
-        // Log LLM extraction cost
-        const extractionCost = budgetService.calculateCost(
-          'openai_chat', // Assuming OpenAI for now
-          'gpt-4o',
-          extractionUsage.inputTokens,
-          extractionUsage.outputTokens
-        );
+        // Log LLM extraction usage
         await budgetService.logUsage({
           entryId,
           service: 'openai_chat',
           model: 'gpt-4o',
-          inputUnits: extractionUsage.inputTokens,
-          outputUnits: extractionUsage.outputTokens,
-          costUsd: extractionCost,
+          inputUnits: llmResult.usage.inputTokens,
+          outputUnits: llmResult.usage.outputTokens,
+          costUsd: budgetService.calculateCost(
+            'openai_chat',
+            'gpt-4o',
+            llmResult.usage.inputTokens,
+            llmResult.usage.outputTokens
+          ),
         });
-      } else {
-        extractedTitle = readabilityResult.title;
-        extractedContent = readabilityResult.content;
       }
 
       // Validate content length
-      if (extractedContent.length < config.minContentLength) {
-        throw new Error(
-          `Content too short: ${extractedContent.length} < ${config.minContentLength}`
-        );
+      if (content.length < config.minContentLength) {
+        throw new Error('Insufficient content extracted');
       }
 
-      // Step 5: Generate transcript via LLM
-      const { transcript, usage: transcriptUsage } =
-        await transcriber.generateTranscript(extractedContent, extractedTitle);
+      // Update entry with extracted content
+      db.prepare('UPDATE entries SET title = ?, extracted_content = ? WHERE id = ?')
+        .run(title || 'Untitled', content, entryId);
 
-      // Log transcript generation cost
-      const transcriptCost = budgetService.calculateCost(
-        'openai_chat',
-        'gpt-4o',
-        transcriptUsage.inputTokens,
-        transcriptUsage.outputTokens
-      );
+      // Step 3: Generate transcript
+      const { transcript, usage: transcriptUsage } =
+        await transcriber.generateTranscript(content, title || 'Untitled');
+
+      // Log transcript usage
       await budgetService.logUsage({
         entryId,
         service: 'openai_chat',
         model: 'gpt-4o',
         inputUnits: transcriptUsage.inputTokens,
         outputUnits: transcriptUsage.outputTokens,
-        costUsd: transcriptCost,
+        costUsd: budgetService.calculateCost(
+          'openai_chat',
+          'gpt-4o',
+          transcriptUsage.inputTokens,
+          transcriptUsage.outputTokens
+        ),
       });
 
-      // Step 6: Generate TTS segments
+      // Update entry with transcript
+      db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?')
+        .run(JSON.stringify(transcript), entryId);
+
+      // Step 4: Generate TTS
       const { segmentFiles: audioSegments, totalUsage: ttsUsage } =
         await ttsProcessor.processTranscript(transcript, entryId);
 
       segmentFiles = audioSegments;
 
-      // Log TTS cost
-      const ttsCost = budgetService.calculateCost(
-        'openai_tts',
-        'tts-1',
-        ttsUsage.characters
-      );
+      // Log TTS usage
       await budgetService.logUsage({
         entryId,
         service: 'openai_tts',
         model: 'tts-1',
         inputUnits: ttsUsage.characters,
         outputUnits: null,
-        costUsd: ttsCost,
+        costUsd: budgetService.calculateCost(
+          'openai_tts',
+          'tts-1',
+          ttsUsage.characters
+        ),
       });
 
-      // Step 7: Merge audio and upload to R2
+      // Step 5: Merge and upload
       const episodeId = uuidv4();
-      const { audioKey, audioUrl, audioDuration, audioSize } =
-        await audioMerger.mergeAndUpload(audioSegments, episodeId);
+      const audioResult = await audioMerger.mergeAndUpload(segmentFiles, episodeId);
 
-      // Step 8: Create episode record
-      const now = new Date().toISOString();
+      // Cleanup segments after successful upload
+      audioMerger.cleanupSegments(segmentFiles);
+
+      // Step 6: Create episode
+      const description = content.substring(0, 200) + (content.length > 200 ? '...' : '');
+      const publishedAt = new Date().toISOString();
+
       db.prepare(
         `INSERT INTO episodes (id, entry_id, category, title, description, audio_key, audio_duration, audio_size, published_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -197,102 +178,50 @@ export function createProcessingPipeline(
         episodeId,
         entryId,
         entry.category,
-        extractedTitle,
-        `Podcast episode from: ${entry.url}`,
-        audioKey,
-        audioDuration,
-        audioSize,
-        now
+        title || 'Untitled',
+        description,
+        audioResult.audioKey,
+        audioResult.audioDuration,
+        audioResult.audioSize,
+        publishedAt
       );
 
-      // Step 9: Update entry to completed
-      db.prepare(
-        `UPDATE entries
-         SET status = ?,
-             title = ?,
-             extracted_content = ?,
-             transcript_json = ?,
-             processed_at = ?
-         WHERE id = ?`
-      ).run(
-        'completed',
-        extractedTitle,
-        extractedContent,
-        JSON.stringify(transcript),
-        now,
-        entryId
-      );
+      // Mark entry as completed
+      db.prepare('UPDATE entries SET status = ?, processed_at = ? WHERE id = ?')
+        .run('completed', publishedAt, entryId);
 
-      // Cleanup temp files
-      audioMerger.cleanupSegments(segmentFiles);
+      return { success: true, entryId, episodeId };
 
-      return {
-        success: true,
-        entryId,
-        episodeId,
-      };
     } catch (error) {
-      // Cleanup temp files on error
-      if (segmentFiles.length > 0) {
-        audioMerger.cleanupSegments(segmentFiles);
-      }
-
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
-      // Get current retry count
-      const entry = db
-        .prepare('SELECT retry_count FROM entries WHERE id = ?')
-        .get(entryId) as { retry_count: number } | undefined;
-
-      const currentRetryCount = entry?.retry_count ?? 0;
+      const err = error as Error;
+      // Get current retry count from database (in case entry object is stale)
+      const dbEntry = db.prepare('SELECT retry_count FROM entries WHERE id = ?').get(entryId) as { retry_count: number } | undefined;
+      const currentRetryCount = dbEntry?.retry_count ?? 0;
       const newRetryCount = currentRetryCount + 1;
 
-      // Calculate next retry time with exponential backoff + jitter
-      let nextRetryAt: string | null = null;
-      if (newRetryCount < config.maxRetries) {
-        // Exponential backoff: baseDelay * 2^(retryCount)
-        const baseDelay = config.baseRetryDelayMs * Math.pow(2, currentRetryCount);
-        // Add 10% jitter
-        const jitter = baseDelay * 0.1 * (Math.random() * 2 - 1);
-        const delayMs = baseDelay + jitter;
-        const nextRetry = new Date(Date.now() + delayMs);
-        nextRetryAt = nextRetry.toISOString();
-      }
-
-      // Update entry with error info
-      db.prepare(
-        `UPDATE entries
-         SET status = ?,
-             retry_count = ?,
-             next_retry_at = ?,
-             error_message = ?
-         WHERE id = ?`
-      ).run('failed', newRetryCount, nextRetryAt, errorMessage, entryId);
-
-      // Send notification if max retries exceeded
       if (newRetryCount >= config.maxRetries) {
-        const entry = db
-          .prepare('SELECT url FROM entries WHERE id = ?')
-          .get(entryId) as { url: string } | undefined;
-        if (entry) {
-          await pushoverService.sendProcessingFailed(
-            entryId,
-            entry.url,
-            errorMessage
-          );
-        }
+        // Mark as permanently failed
+        db.prepare('UPDATE entries SET status = ?, error_message = ?, retry_count = ? WHERE id = ?')
+          .run('failed', err.message, newRetryCount, entryId);
+
+        // Send failure notification
+        await pushoverService.sendProcessingFailed(entryId, entry.url, err.message);
+      } else {
+        // Schedule retry
+        // Use current retry count (before increment) as the exponent
+        // First retry (currentRetryCount=0): 2^0 = 1 minute
+        // Second retry (currentRetryCount=1): 2^1 = 2 minutes
+        const nextRetryAt = calculateNextRetryAt(currentRetryCount);
+        db.prepare('UPDATE entries SET status = ?, error_message = ?, retry_count = ?, next_retry_at = ? WHERE id = ?')
+          .run('failed', err.message, newRetryCount, nextRetryAt, entryId);
       }
 
-      return {
-        success: false,
-        entryId,
-        error: errorMessage,
-      };
+      // Keep segments for retry if upload failed
+      // (they'll be cleaned up on next attempt or by cleanup job)
+
+      return { success: false, entryId, error: err.message };
     }
   }
 
-  return {
-    processEntry,
-  };
+  return { processEntry };
 }
