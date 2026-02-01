@@ -94,12 +94,12 @@ export function createProcessingPipeline(
 
         // Log LLM extraction usage
         await budgetService.logUsage({
-          entryId,
+          entry_id: entryId,
           service: 'openai_chat',
           model: 'gpt-4o',
-          inputUnits: llmResult.usage.inputTokens,
-          outputUnits: llmResult.usage.outputTokens,
-          costUsd: budgetService.calculateCost(
+          input_units: llmResult.usage.inputTokens,
+          output_units: llmResult.usage.outputTokens,
+          cost_usd: budgetService.calculateCost(
             'openai_chat',
             'gpt-4o',
             llmResult.usage.inputTokens,
@@ -123,12 +123,12 @@ export function createProcessingPipeline(
 
       // Log transcript usage
       await budgetService.logUsage({
-        entryId,
+        entry_id: entryId,
         service: 'openai_chat',
         model: 'gpt-4o',
-        inputUnits: transcriptUsage.inputTokens,
-        outputUnits: transcriptUsage.outputTokens,
-        costUsd: budgetService.calculateCost(
+        input_units: transcriptUsage.inputTokens,
+        output_units: transcriptUsage.outputTokens,
+        cost_usd: budgetService.calculateCost(
           'openai_chat',
           'gpt-4o',
           transcriptUsage.inputTokens,
@@ -148,12 +148,12 @@ export function createProcessingPipeline(
 
       // Log TTS usage
       await budgetService.logUsage({
-        entryId,
+        entry_id: entryId,
         service: 'openai_tts',
         model: 'tts-1',
-        inputUnits: ttsUsage.characters,
-        outputUnits: null,
-        costUsd: budgetService.calculateCost(
+        input_units: ttsUsage.characters,
+        output_units: null,
+        cost_usd: budgetService.calculateCost(
           'openai_tts',
           'tts-1',
           ttsUsage.characters

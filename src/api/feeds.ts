@@ -75,8 +75,8 @@ export function createFeedHandlers(
 
     return {
       name: row.name,
-      feedId: row.feed_id,
-      createdAt: row.created_at,
+      feed_id: row.feed_id,
+      created_at: row.created_at,
     };
   }
 

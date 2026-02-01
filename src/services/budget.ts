@@ -11,7 +11,7 @@ export interface BudgetService {
     inputUnits: number,
     outputUnits?: number
   ): number;
-  logUsage(usage: Omit<UsageLog, 'id' | 'createdAt'>): Promise<void>;
+  logUsage(usage: Omit<UsageLog, 'id' | 'created_at'>): Promise<void>;
   getStatus(): Promise<BudgetStatus>;
   canProcess(): Promise<boolean>;
   loadPricingConfig(): PricingConfig;
@@ -83,7 +83,7 @@ export function createBudgetService(
   }
 
   async function logUsage(
-    usage: Omit<UsageLog, 'id' | 'createdAt'>
+    usage: Omit<UsageLog, 'id' | 'created_at'>
   ): Promise<void> {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -93,12 +93,12 @@ export function createBudgetService(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
-      usage.entryId,
+      usage.entry_id,
       usage.service,
       usage.model,
-      usage.inputUnits,
-      usage.outputUnits,
-      usage.costUsd,
+      usage.input_units,
+      usage.output_units,
+      usage.cost_usd,
       createdAt
     );
   }

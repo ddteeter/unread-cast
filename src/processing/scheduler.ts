@@ -22,7 +22,7 @@ export interface SchedulerDependencies {
   db: Database.Database;
   budgetService: BudgetService;
   pushoverService: PushoverService;
-  processEntry: (entry: Entry) => Promise<{ success: boolean; entryId: string; error?: string }>;
+  processEntry: (entry: Entry) => Promise<{ success: boolean; entry_id: string; error?: string }>;
 }
 
 export function createScheduler(deps: SchedulerDependencies, config: SchedulerConfig) {
@@ -126,13 +126,13 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
           category: row.category as string | null,
           status: row.status as Entry['status'],
           title: row.title as string | null,
-          extractedContent: row.extracted_content as string | null,
-          transcriptJson: row.transcript_json as string | null,
-          errorMessage: row.error_message as string | null,
-          retryCount: row.retry_count as number,
-          nextRetryAt: row.next_retry_at as string | null,
-          createdAt: row.created_at as string,
-          processedAt: row.processed_at as string | null,
+          extracted_content: row.extracted_content as string | null,
+          transcript_json: row.transcript_json as string | null,
+          error_message: row.error_message as string | null,
+          retry_count: row.retry_count as number,
+          next_retry_at: row.next_retry_at as string | null,
+          created_at: row.created_at as string,
+          processed_at: row.processed_at as string | null,
         };
 
         console.log(`Processing entry ${entry.id}: ${entry.url}`);

@@ -87,7 +87,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
 
     if (!row) return null;
 
-    return row as Entry;
+    return row as unknown as Entry;
   }
 
   async function listEntries(status?: string): Promise<Entry[]> {
@@ -101,7 +101,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
         : db.prepare(query).all()
     ) as Record<string, unknown>[];
 
-    return rows as Entry[];
+    return rows as unknown as Entry[];
   }
 
   return {

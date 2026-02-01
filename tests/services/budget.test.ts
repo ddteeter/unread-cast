@@ -70,12 +70,12 @@ describe('budget service', () => {
 
     // Log some usage
     await service.logUsage({
-      entryId: null,
+      entry_id: null,
       service: 'openai_chat',
       model: 'gpt-4o',
-      inputUnits: 1000000, // $2.50
-      outputUnits: 100000, // $1.00
-      costUsd: 3.5,
+      input_units: 1000000, // $2.50
+      output_units: 100000, // $1.00
+      cost_usd: 3.5,
     });
 
     const status = await service.getStatus();
@@ -96,12 +96,12 @@ describe('budget service', () => {
     );
 
     await service.logUsage({
-      entryId: null,
+      entry_id: null,
       service: 'openai_chat',
       model: 'gpt-4o',
-      inputUnits: 1000000,
-      outputUnits: 1000000,
-      costUsd: 12.5, // Over budget
+      input_units: 1000000,
+      output_units: 1000000,
+      cost_usd: 12.5, // Over budget
     });
 
     const canProcess = await service.canProcess();

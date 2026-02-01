@@ -302,7 +302,7 @@ describe('scheduler', () => {
         expect.objectContaining({
           id: entryId,
           status: 'failed',
-          retryCount: 1,
+          retry_count: 1,
         })
       );
     });
