@@ -124,8 +124,8 @@ describe('processing pipeline', () => {
 
     // Verify success
     expect(result.success).toBe(true);
-    expect(result.entryId).toBe(entryId);
-    expect(result.episodeId).toBeDefined();
+    expect(result.entry_id).toBe(entryId);
+    expect(result.episode_id).toBeDefined();
 
     // Verify all steps were called in order
     expect(mockFetchHtml).toHaveBeenCalledWith('https://example.com/article');

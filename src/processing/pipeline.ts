@@ -190,7 +190,7 @@ export function createProcessingPipeline(
       db.prepare('UPDATE entries SET status = ?, processed_at = ? WHERE id = ?')
         .run('completed', publishedAt, entryId);
 
-      return { success: true, entryId, episodeId };
+      return { success: true, entry_id: entryId, episode_id: episodeId };
 
     } catch (error) {
       const err = error as Error;
@@ -219,7 +219,7 @@ export function createProcessingPipeline(
       // Keep segments for retry if upload failed
       // (they'll be cleaned up on next attempt or by cleanup job)
 
-      return { success: false, entryId, error: err.message };
+      return { success: false, entry_id: entryId, error: err.message };
     }
   }
 

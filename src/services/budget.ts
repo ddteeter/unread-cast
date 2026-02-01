@@ -131,12 +131,12 @@ export function createBudgetService(
 
     return {
       period,
-      spentUsd,
-      budgetUsd: monthlyBudgetUsd,
-      remainingUsd,
-      percentUsed,
+      spent_usd: spentUsd,
+      budget_usd: monthlyBudgetUsd,
+      remaining_usd: remainingUsd,
+      percent_used: percentUsed,
       status,
-      processingEnabled: status !== 'exceeded',
+      processing_enabled: status !== 'exceeded',
     };
   }
 
@@ -149,7 +149,7 @@ export function createBudgetService(
     }
 
     const status = await getStatus();
-    return status.processingEnabled;
+    return status.processing_enabled;
   }
 
   return {

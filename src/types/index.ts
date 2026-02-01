@@ -6,48 +6,48 @@ export interface Entry {
   category: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   title: string | null;
-  extractedContent: string | null;
-  transcriptJson: string | null;
-  errorMessage: string | null;
-  retryCount: number;
-  nextRetryAt: string | null;
-  createdAt: string;
-  processedAt: string | null;
+  extracted_content: string | null;
+  transcript_json: string | null;
+  error_message: string | null;
+  retry_count: number;
+  next_retry_at: string | null;
+  created_at: string;
+  processed_at: string | null;
 }
 
 export interface Episode {
   id: string;
-  entryId: string;
+  entry_id: string;
   category: string | null;
   title: string;
   description: string;
-  audioKey: string;
-  audioDuration: number;
-  audioSize: number;
-  publishedAt: string;
+  audio_key: string;
+  audio_duration: number;
+  audio_size: number;
+  published_at: string;
 }
 
 export interface Category {
   name: string;
-  feedId: string;
-  createdAt: string;
+  feed_id: string;
+  created_at: string;
 }
 
 export interface UsageLog {
   id: string;
-  entryId: string | null;
+  entry_id: string | null;
   service: 'openai_chat' | 'openai_tts' | 'anthropic';
   model: string;
-  inputUnits: number;
-  outputUnits: number | null;
-  costUsd: number;
-  createdAt: string;
+  input_units: number;
+  output_units: number | null;
+  cost_usd: number;
+  created_at: string;
 }
 
 export interface ProcessingLock {
   id: number;
-  lockedAt: string | null;
-  lockedBy: string | null;
+  locked_at: string | null;
+  locked_by: string | null;
 }
 
 export interface TranscriptSegment {
@@ -60,19 +60,19 @@ export type Transcript = TranscriptSegment[];
 
 export interface ProcessingResult {
   success: boolean;
-  entryId: string;
-  episodeId?: string;
+  entry_id: string;
+  episode_id?: string;
   error?: string;
 }
 
 export interface BudgetStatus {
   period: string;
-  spentUsd: number;
-  budgetUsd: number;
-  remainingUsd: number;
-  percentUsed: number;
+  spent_usd: number;
+  budget_usd: number;
+  remaining_usd: number;
+  percent_used: number;
   status: 'ok' | 'warning' | 'exceeded';
-  processingEnabled: boolean;
+  processing_enabled: boolean;
 }
 
 export interface PricingConfig {

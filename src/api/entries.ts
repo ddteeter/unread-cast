@@ -70,13 +70,13 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
       category,
       status: 'pending',
       title: null,
-      extractedContent: null,
-      transcriptJson: null,
-      errorMessage: null,
-      retryCount: 0,
-      nextRetryAt: null,
-      createdAt,
-      processedAt: null,
+      extracted_content: null,
+      transcript_json: null,
+      error_message: null,
+      retry_count: 0,
+      next_retry_at: null,
+      created_at: createdAt,
+      processed_at: null,
     };
   }
 
@@ -87,20 +87,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
 
     if (!row) return null;
 
-    return {
-      id: row.id as string,
-      url: row.url as string,
-      category: row.category as string | null,
-      status: row.status as Entry['status'],
-      title: row.title as string | null,
-      extractedContent: row.extracted_content as string | null,
-      transcriptJson: row.transcript_json as string | null,
-      errorMessage: row.error_message as string | null,
-      retryCount: row.retry_count as number,
-      nextRetryAt: row.next_retry_at as string | null,
-      createdAt: row.created_at as string,
-      processedAt: row.processed_at as string | null,
-    };
+    return row as Entry;
   }
 
   async function listEntries(status?: string): Promise<Entry[]> {
@@ -114,20 +101,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
         : db.prepare(query).all()
     ) as Record<string, unknown>[];
 
-    return rows.map((row) => ({
-      id: row.id as string,
-      url: row.url as string,
-      category: row.category as string | null,
-      status: row.status as Entry['status'],
-      title: row.title as string | null,
-      extractedContent: row.extracted_content as string | null,
-      transcriptJson: row.transcript_json as string | null,
-      errorMessage: row.error_message as string | null,
-      retryCount: row.retry_count as number,
-      nextRetryAt: row.next_retry_at as string | null,
-      createdAt: row.created_at as string,
-      processedAt: row.processed_at as string | null,
-    }));
+    return rows as Entry[];
   }
 
   return {

@@ -79,12 +79,12 @@ describe('budget service', () => {
     });
 
     const status = await service.getStatus();
-    expect(status.spentUsd).toBeCloseTo(3.5, 2);
-    expect(status.budgetUsd).toBe(20);
-    expect(status.remainingUsd).toBeCloseTo(16.5, 2);
-    expect(status.percentUsed).toBeCloseTo(17.5, 1);
+    expect(status.spent_usd).toBeCloseTo(3.5, 2);
+    expect(status.budget_usd).toBe(20);
+    expect(status.remaining_usd).toBeCloseTo(16.5, 2);
+    expect(status.percent_used).toBeCloseTo(17.5, 1);
     expect(status.status).toBe('ok');
-    expect(status.processingEnabled).toBe(true);
+    expect(status.processing_enabled).toBe(true);
   });
 
   it('should block processing when budget exceeded', async () => {
@@ -109,7 +109,7 @@ describe('budget service', () => {
 
     const status = await service.getStatus();
     expect(status.status).toBe('exceeded');
-    expect(status.processingEnabled).toBe(false);
+    expect(status.processing_enabled).toBe(false);
   });
 
   it('should throw if model not in pricing config', async () => {
