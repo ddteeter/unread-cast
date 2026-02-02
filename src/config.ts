@@ -34,6 +34,10 @@ const configSchema = z.object({
   pushoverAppToken: z.string().optional(),
   budgetWarningPercent: z.number().default(80),
   dataDir: z.string().default('/data'),
+
+  // Token limits for LLM API calls
+  maxTranscriptTokens: z.number().default(16000), // ~hour of podcast content
+  maxExtractionTokens: z.number().default(8000), // long articles
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -74,6 +78,12 @@ function parseEnv(): Config {
       ? parseInt(process.env.BUDGET_WARNING_PERCENT, 10)
       : undefined,
     dataDir: process.env.DATA_DIR,
+    maxTranscriptTokens: process.env.MAX_TRANSCRIPT_TOKENS
+      ? parseInt(process.env.MAX_TRANSCRIPT_TOKENS, 10)
+      : undefined,
+    maxExtractionTokens: process.env.MAX_EXTRACTION_TOKENS
+      ? parseInt(process.env.MAX_EXTRACTION_TOKENS, 10)
+      : undefined,
   };
 
   return configSchema.parse(raw);

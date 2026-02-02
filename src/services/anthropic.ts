@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { APIError } from '@anthropic-ai/sdk';
 import type { Transcript, TranscriptSegment } from '../types/index.js';
 import type { LLMUsage } from './openai.js';
 
@@ -58,7 +59,11 @@ Respond with ONLY the JSON array, no other text.`;
 
 const EXTRACT_SYSTEM_PROMPT = `Extract the main article content from the following HTML. Remove all navigation, ads, footers, comments, author bios, newsletter signups, and other non-article content. Return only the article text, preserving paragraph structure.`;
 
-export function createAnthropicService(apiKey: string): AnthropicService {
+export function createAnthropicService(
+  apiKey: string,
+  maxTranscriptTokens: number = 16000,
+  maxExtractionTokens: number = 8000
+): AnthropicService {
   const client = new Anthropic({ apiKey });
 
   async function generateTranscript(
@@ -66,68 +71,91 @@ export function createAnthropicService(apiKey: string): AnthropicService {
     title: string,
     model: string
   ): Promise<{ transcript: Transcript; usage: LLMUsage }> {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 8192,
-      system: TRANSCRIPT_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Article Title: ${title}\n\nArticle Content:\n${content}`,
-        },
-      ],
-    });
-
-    const textBlock = response.content.find((block) => block.type === 'text');
-    const text = textBlock?.type === 'text' ? textBlock.text : '[]';
-
-    let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new Error('Failed to parse transcript JSON');
-    }
+      const response = await client.messages.create({
+        model,
+        max_tokens: maxTranscriptTokens,
+        temperature: 0.7,
+        system: TRANSCRIPT_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Article Title: ${title}\n\nArticle Content:\n${content}`,
+          },
+        ],
+      });
 
-    const segments: TranscriptSegment[] = Array.isArray(parsed)
-      ? parsed
-      : (parsed as { transcript?: TranscriptSegment[] }).transcript ?? [];
+      const textBlock = response.content.find((block) => block.type === 'text');
+      const text = textBlock?.type === 'text' ? textBlock.text : '[]';
 
-    for (const segment of segments) {
-      if (!segment.speaker || !segment.text || !segment.instruction) {
-        throw new Error('Invalid transcript segment structure');
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new Error('Failed to parse transcript JSON');
       }
-    }
 
-    return {
-      transcript: segments,
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-      },
-    };
+      const segments: TranscriptSegment[] = Array.isArray(parsed)
+        ? parsed
+        : (parsed as { transcript?: TranscriptSegment[] }).transcript ?? [];
+
+      for (const segment of segments) {
+        if (!segment.speaker || !segment.text || !segment.instruction) {
+          throw new Error('Invalid transcript segment structure');
+        }
+      }
+
+      return {
+        transcript: segments,
+        usage: {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        },
+      };
+    } catch (error) {
+      if (error instanceof APIError && error.status === 429) {
+        // Check message to differentiate quota vs rate limit
+        if (error.message.includes('credit') || error.message.includes('quota')) {
+          throw new Error('Anthropic API quota exceeded - please add credits');
+        }
+        throw new Error('Anthropic rate limit - will retry automatically');
+      }
+      throw error;
+    }
   }
 
   async function extractContent(
     html: string,
     model: string
   ): Promise<{ content: string; usage: LLMUsage }> {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 8192,
-      system: EXTRACT_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: html }],
-    });
+    try {
+      const response = await client.messages.create({
+        model,
+        max_tokens: maxExtractionTokens,
+        temperature: 0,
+        system: EXTRACT_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: html }],
+      });
 
-    const textBlock = response.content.find((block) => block.type === 'text');
-    const content = textBlock?.type === 'text' ? textBlock.text : '';
+      const textBlock = response.content.find((block) => block.type === 'text');
+      const content = textBlock?.type === 'text' ? textBlock.text : '';
 
-    return {
-      content,
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-      },
-    };
+      return {
+        content,
+        usage: {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        },
+      };
+    } catch (error) {
+      if (error instanceof APIError && error.status === 429) {
+        if (error.message.includes('credit') || error.message.includes('quota')) {
+          throw new Error('Anthropic API quota exceeded - please add credits');
+        }
+        throw new Error('Anthropic rate limit - will retry automatically');
+      }
+      throw error;
+    }
   }
 
   return {

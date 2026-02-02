@@ -52,9 +52,17 @@ async function main() {
     publicUrl: config.r2PublicUrl,
   });
 
-  const openaiService = createOpenAIService(config.openaiApiKey);
+  const openaiService = createOpenAIService(
+    config.openaiApiKey,
+    config.maxTranscriptTokens,
+    config.maxExtractionTokens
+  );
   const anthropicService = config.anthropicApiKey
-    ? createAnthropicService(config.anthropicApiKey)
+    ? createAnthropicService(
+        config.anthropicApiKey,
+        config.maxTranscriptTokens,
+        config.maxExtractionTokens
+      )
     : null;
 
   // Initialize processing components
