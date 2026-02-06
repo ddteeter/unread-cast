@@ -29,8 +29,8 @@ interface Transcriber {
   generateTranscript(
     content: string,
     title: string
-  ): Promise<{ transcript: Transcript; usage: LLMUsage }>;
-  extractContentWithLLM(html: string): Promise<{ content: string; usage: LLMUsage }>;
+  ): Promise<{ transcript: Transcript; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }>;
+  extractContentWithLLM(html: string): Promise<{ content: string; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }>;
 }
 
 interface TTSProcessor {
@@ -93,15 +93,16 @@ export function createProcessingPipeline(
         content = llmResult.content;
 
         // Log LLM extraction usage
+        const service = llmResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
         await budgetService.logUsage({
           entry_id: entryId,
-          service: 'openai_chat',
-          model: 'gpt-4o',
+          service,
+          model: llmResult.model,
           input_units: llmResult.usage.inputTokens,
           output_units: llmResult.usage.outputTokens,
           cost_usd: budgetService.calculateCost(
-            'openai_chat',
-            'gpt-4o',
+            service,
+            llmResult.model,
             llmResult.usage.inputTokens,
             llmResult.usage.outputTokens
           ),
@@ -118,31 +119,31 @@ export function createProcessingPipeline(
         .run(title || 'Untitled', content, entryId);
 
       // Step 3: Generate transcript
-      const { transcript, usage: transcriptUsage } =
-        await transcriber.generateTranscript(content, title || 'Untitled');
+      const transcriptResult = await transcriber.generateTranscript(content, title || 'Untitled');
 
       // Log transcript usage
+      const transcriptService = transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
       await budgetService.logUsage({
         entry_id: entryId,
-        service: 'openai_chat',
-        model: 'gpt-4o',
-        input_units: transcriptUsage.inputTokens,
-        output_units: transcriptUsage.outputTokens,
+        service: transcriptService,
+        model: transcriptResult.model,
+        input_units: transcriptResult.usage.inputTokens,
+        output_units: transcriptResult.usage.outputTokens,
         cost_usd: budgetService.calculateCost(
-          'openai_chat',
-          'gpt-4o',
-          transcriptUsage.inputTokens,
-          transcriptUsage.outputTokens
+          transcriptService,
+          transcriptResult.model,
+          transcriptResult.usage.inputTokens,
+          transcriptResult.usage.outputTokens
         ),
       });
 
       // Update entry with transcript
       db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?')
-        .run(JSON.stringify(transcript), entryId);
+        .run(JSON.stringify(transcriptResult.transcript), entryId);
 
       // Step 4: Generate TTS
       const { segmentFiles: audioSegments, totalUsage: ttsUsage } =
-        await ttsProcessor.processTranscript(transcript, entryId);
+        await ttsProcessor.processTranscript(transcriptResult.transcript, entryId);
 
       segmentFiles = audioSegments;
 
@@ -150,12 +151,12 @@ export function createProcessingPipeline(
       await budgetService.logUsage({
         entry_id: entryId,
         service: 'openai_tts',
-        model: 'tts-1',
+        model: 'gpt-4o-mini-tts',
         input_units: ttsUsage.characters,
         output_units: null,
         cost_usd: budgetService.calculateCost(
           'openai_tts',
-          'tts-1',
+          'gpt-4o-mini-tts',
           ttsUsage.characters
         ),
       });

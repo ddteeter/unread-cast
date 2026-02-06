@@ -9,6 +9,7 @@ import type { BudgetService } from '../services/budget.js';
 export interface RouteConfig {
   apiKey: string;
   feedConfig: FeedConfig;
+  triggerProcessing?: () => Promise<void>;
 }
 
 export function registerRoutes(
@@ -88,8 +89,14 @@ export function registerRoutes(
       )
       .get(new Date().toISOString()) as { count: number };
 
-    // Note: Actual processing is triggered via scheduler
-    // This endpoint just reports what would be processed
+    // Trigger processing if configured
+    if (config.triggerProcessing) {
+      // Don't await - let it run in background
+      config.triggerProcessing().catch((err) => {
+        console.error('Processing job failed:', err);
+      });
+    }
+
     reply.status(202);
     return {
       message: 'Processing started',

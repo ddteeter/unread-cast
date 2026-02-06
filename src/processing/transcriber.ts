@@ -12,6 +12,8 @@ export interface TranscriberConfig {
 export interface TranscriberResult {
   transcript: Transcript;
   usage: LLMUsage;
+  provider: 'openai' | 'anthropic';
+  model: string;
 }
 
 export function createTranscriber(
@@ -30,11 +32,21 @@ export function createTranscriber(
     }
 
     if (config.provider === 'anthropic' && anthropicService) {
-      return anthropicService.generateTranscript(content, title, config.model);
+      const result = await anthropicService.generateTranscript(content, title, config.model);
+      return {
+        ...result,
+        provider: 'anthropic',
+        model: config.model,
+      };
     }
 
     if (openaiService) {
-      return openaiService.generateTranscript(content, title, config.model);
+      const result = await openaiService.generateTranscript(content, title, config.model);
+      return {
+        ...result,
+        provider: 'openai',
+        model: config.model,
+      };
     }
 
     throw new Error('No LLM service configured');
@@ -42,13 +54,23 @@ export function createTranscriber(
 
   async function extractContentWithLLM(
     html: string
-  ): Promise<{ content: string; usage: LLMUsage }> {
+  ): Promise<{ content: string; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }> {
     if (config.provider === 'anthropic' && anthropicService) {
-      return anthropicService.extractContent(html, config.model);
+      const result = await anthropicService.extractContent(html, config.model);
+      return {
+        ...result,
+        provider: 'anthropic',
+        model: config.model,
+      };
     }
 
     if (openaiService) {
-      return openaiService.extractContent(html, config.model);
+      const result = await openaiService.extractContent(html, config.model);
+      return {
+        ...result,
+        provider: 'openai',
+        model: config.model,
+      };
     }
 
     throw new Error('No LLM service configured');

@@ -39,6 +39,15 @@ async function main() {
     config.budgetWarningPercent
   );
 
+  // Validate pricing config at startup
+  try {
+    budgetService.loadPricingConfig();
+    console.log('Pricing config loaded successfully');
+  } catch (error) {
+    console.error('Failed to load pricing config:', error);
+    process.exit(1);
+  }
+
   const pushoverService = createPushoverService(
     config.pushoverUserKey,
     config.pushoverAppToken
@@ -126,6 +135,7 @@ async function main() {
       artworkUrl: config.artworkUrl,
       r2PublicUrl: config.r2PublicUrl,
     },
+    triggerProcessing: scheduler.runProcessingJob,
   });
 
   // Graceful shutdown handler
