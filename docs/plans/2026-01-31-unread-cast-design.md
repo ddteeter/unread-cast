@@ -579,7 +579,7 @@ unread-cast/
 - `@types/*` - Type definitions
 
 ### Docker
-- Base image: `node:20-alpine`
+- Base image: `node:24-alpine`
 - Install `ffmpeg` package in container
 
 ---

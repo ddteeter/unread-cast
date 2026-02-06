@@ -3530,7 +3530,7 @@ git commit -m "feat: add application entry point"
 
 ```dockerfile
 # Dockerfile
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Install ffmpeg
 RUN apk add --no-cache ffmpeg

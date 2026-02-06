@@ -17,6 +17,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
     "@aws-sdk/client-s3": "^3.980.0",

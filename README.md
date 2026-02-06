@@ -6,7 +6,7 @@ An article-to-podcast converter that accepts URLs, generates audio via LLM+TTS, 
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v24 or higher)
 - Docker and Docker Compose (for production deployment)
 
 ### Installation
