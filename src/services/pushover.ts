@@ -53,7 +53,7 @@ export function createPushoverService(
     budget: number
   ): Promise<void> {
     await send(
-      'Podcast Later - Budget Warning',
+      'Unread Cast - Budget Warning',
       `Monthly spend at ${percentUsed.toFixed(0)}% ($${spent.toFixed(2)} of $${budget.toFixed(2)}). Processing will pause at 100%.`
     );
   }
@@ -63,7 +63,7 @@ export function createPushoverService(
     budget: number
   ): Promise<void> {
     await send(
-      'Podcast Later - Budget Exceeded',
+      'Unread Cast - Budget Exceeded',
       `Monthly budget exceeded ($${spent.toFixed(2)} of $${budget.toFixed(2)}). Processing is paused until next month.`,
       1 // High priority
     );
@@ -75,7 +75,7 @@ export function createPushoverService(
     error: string
   ): Promise<void> {
     await send(
-      'Podcast Later - Processing Failed',
+      'Unread Cast - Processing Failed',
       `Entry ${entryId} failed after max retries.\nURL: ${url}\nError: ${error}`
     );
   }

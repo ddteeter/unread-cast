@@ -27,7 +27,7 @@ async function main() {
   mkdirSync(tempDir, { recursive: true });
 
   // Initialize database
-  const dbPath = join(dataDir, 'podcast-later.db');
+  const dbPath = join(dataDir, 'unread-cast.db');
   const db = createDatabase(dbPath);
   console.log(`Database initialized at ${dbPath}`);
 

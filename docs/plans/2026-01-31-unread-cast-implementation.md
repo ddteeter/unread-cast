@@ -1,4 +1,4 @@
-# Podcast Later Implementation Plan
+# Unread Cast Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -312,8 +312,8 @@ const configSchema = z.object({
     'alloy', 'ash', 'ballad', 'coral', 'echo',
     'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'
   ]),
-  feedTitle: z.string().default('Podcast Later'),
-  feedAuthor: z.string().default('Podcast Later'),
+  feedTitle: z.string().default('Unread Cast'),
+  feedAuthor: z.string().default('Unread Cast'),
   feedDescription: z.string().default('Auto-generated podcasts from articles'),
   artworkUrl: z.string().url().optional(),
   retentionDays: z.number().default(90),
@@ -408,7 +408,7 @@ describe('database client', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'podcast-later-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'unread-cast-test-'));
   });
 
   afterEach(() => {
@@ -612,7 +612,7 @@ describe('budget service', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'podcast-later-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'unread-cast-test-'));
     db = new Database(':memory:');
     initializeSchema(db);
 
@@ -1058,7 +1058,7 @@ export function createPushoverService(
     budget: number
   ): Promise<void> {
     await send(
-      'Podcast Later - Budget Warning',
+      'Unread Cast - Budget Warning',
       `Monthly spend at ${percentUsed.toFixed(0)}% ($${spent.toFixed(2)} of $${budget.toFixed(2)}). Processing will pause at 100%.`
     );
   }
@@ -1068,7 +1068,7 @@ export function createPushoverService(
     budget: number
   ): Promise<void> {
     await send(
-      'Podcast Later - Budget Exceeded',
+      'Unread Cast - Budget Exceeded',
       `Monthly budget exceeded ($${spent.toFixed(2)} of $${budget.toFixed(2)}). Processing is paused until next month.`,
       1 // High priority
     );
@@ -1080,7 +1080,7 @@ export function createPushoverService(
     error: string
   ): Promise<void> {
     await send(
-      'Podcast Later - Processing Failed',
+      'Unread Cast - Processing Failed',
       `Entry ${entryId} failed after max retries.\nURL: ${url}\nError: ${error}`
     );
   }
@@ -1883,7 +1883,7 @@ describe('entry handlers', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'podcast-later-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'unread-cast-test-'));
     db = new Database(':memory:');
     initializeSchema(db);
   });
@@ -2550,7 +2550,7 @@ export async function fetchHtml(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (compatible; PodcastLater/1.0; +https://github.com/podcast-later)',
+        'Mozilla/5.0 (compatible; UnreadCast/1.0; +https://github.com/unread-cast)',
     },
   });
 
@@ -3402,7 +3402,7 @@ async function main() {
   mkdirSync(tempDir, { recursive: true });
 
   // Initialize database
-  const dbPath = join(dataDir, 'podcast-later.db');
+  const dbPath = join(dataDir, 'unread-cast.db');
   const db = createDatabase(dbPath);
   console.log(`Database initialized at ${dbPath}`);
 
@@ -3567,7 +3567,7 @@ CMD ["node", "dist/index.js"]
 version: '3.8'
 
 services:
-  podcast-later:
+  unread-cast:
     build: .
     ports:
       - "8080:8080"

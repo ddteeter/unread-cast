@@ -23,8 +23,8 @@ const configSchema = z.object({
     'alloy', 'ash', 'ballad', 'coral', 'echo',
     'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'
   ]),
-  feedTitle: z.string().default('Podcast Later'),
-  feedAuthor: z.string().default('Podcast Later'),
+  feedTitle: z.string().default('Unread Cast'),
+  feedAuthor: z.string().default('Unread Cast'),
   feedDescription: z.string().default('Auto-generated podcasts from articles'),
   artworkUrl: z.string().url().optional(),
   retentionDays: z.number().default(90),

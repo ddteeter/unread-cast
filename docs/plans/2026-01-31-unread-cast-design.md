@@ -1,4 +1,4 @@
-# Podcast Later - Product Requirements Document
+# Unread Cast - Product Requirements Document
 
 A read-it-later application that converts web articles into podcast episodes, subscribable via Apple Podcasts and other podcast apps.
 
@@ -8,7 +8,7 @@ A read-it-later application that converts web articles into podcast episodes, su
 - **Runtime**: Docker container on Hetzner VPS (deployed via Dokploy)
 - **Language**: TypeScript
 - **Framework**: Fastify
-- **Database**: SQLite (single file at `/data/podcast-later.db`)
+- **Database**: SQLite (single file at `/data/unread-cast.db`)
 - **Audio Storage**: Cloudflare R2 (served via custom domain)
 - **Port**: 8080
 
@@ -445,7 +445,7 @@ If `PUSHOVER_USER_KEY` and `PUSHOVER_APP_TOKEN` are configured, send push notifi
 
 **Example alert:**
 ```
-Title: Podcast Later - Budget Warning
+Title: Unread Cast - Budget Warning
 Message: Monthly spend at 82% ($16.40 of $20.00). Processing will pause at 100%.
 ```
 
@@ -497,8 +497,8 @@ If Pushover is not configured, alerts are logged to stdout only.
 | `LLM_PROVIDER` | No | openai | 'openai' or 'anthropic' |
 | `LLM_MODEL` | No | gpt-4o | Model for transcript generation |
 | `TTS_VOICES` | No | all 11 | Comma-separated voice list |
-| `FEED_TITLE` | No | Podcast Later | RSS feed title |
-| `FEED_AUTHOR` | No | Podcast Later | RSS feed author |
+| `FEED_TITLE` | No | Unread Cast | RSS feed title |
+| `FEED_AUTHOR` | No | Unread Cast | RSS feed author |
 | `FEED_DESCRIPTION` | No | Auto-generated podcasts | RSS feed description |
 | `ARTWORK_URL` | No | - | URL to podcast artwork image |
 | `RETENTION_DAYS` | No | 90 | Days to keep episodes |
@@ -519,7 +519,7 @@ If Pushover is not configured, alerts are logged to stdout only.
 ## Project Structure
 
 ```
-podcast-later/
+unread-cast/
 ├── src/
 │   ├── index.ts              # Entry point, server setup
 │   ├── config.ts             # Environment variable parsing

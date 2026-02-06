@@ -3,7 +3,7 @@ export async function fetchHtml(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (compatible; PodcastLater/1.0; +https://github.com/podcast-later)',
+        'Mozilla/5.0 (compatible; UnreadCast/1.0; +https://github.com/unread-cast)',
     },
   });
 

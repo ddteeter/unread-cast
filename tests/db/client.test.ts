@@ -7,7 +7,7 @@ describe('database client', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'podcast-later-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'unread-cast-test-'));
   });
 
   afterEach(() => {

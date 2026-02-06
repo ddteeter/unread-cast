@@ -1,9 +1,9 @@
 services:
-  podcast-later:
+  unread-cast:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: podcast-later
+    container_name: unread-cast
     ports:
       - "8080:8080"
     volumes:

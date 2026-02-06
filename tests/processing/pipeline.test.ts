@@ -13,7 +13,7 @@ describe('processing pipeline', () => {
   let entryId: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'podcast-later-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'unread-cast-test-'));
     db = new Database(':memory:');
     initializeSchema(db);
 
