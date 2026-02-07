@@ -32,7 +32,7 @@ export function registerRoutes(
   });
 
   // Health check
-  app.get('/health', async () => {
+  app.get('/health', () => {
     return {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -48,17 +48,18 @@ export function registerRoutes(
   app.post<{ Body: CreateEntryInput }>('/entries', async (request, reply) => {
     try {
       const entry = await entryHandlers.createEntry(request.body);
-      reply.status(201);
-      return entry;
+      return reply.status(201).send(entry);
     } catch (error) {
       const err = error as Error & { code?: string };
       if (err.code === 'INVALID_URL') {
-        reply.status(400);
-        return { error: 'Bad Request', message: err.message, code: 'INVALID_URL' };
+        return reply
+          .status(400)
+          .send({ error: 'Bad Request', message: err.message, code: 'INVALID_URL' });
       }
       if (err.code === 'DUPLICATE_URL') {
-        reply.status(409);
-        return { error: 'Conflict', message: err.message, code: 'DUPLICATE_URL' };
+        return reply
+          .status(409)
+          .send({ error: 'Conflict', message: err.message, code: 'DUPLICATE_URL' });
       }
       throw error;
     }
@@ -69,15 +70,12 @@ export function registerRoutes(
     const canProcess = await budgetService.canProcess();
     if (!canProcess) {
       const status = await budgetService.getStatus();
-      reply.status(503);
-      return {
+      return reply.status(503).send({
         error: 'Service Unavailable',
         message:
-          status.status === 'exceeded'
-            ? 'Budget exceeded'
-            : 'Pricing config missing or invalid',
+          status.status === 'exceeded' ? 'Budget exceeded' : 'Pricing config missing or invalid',
         code: status.status === 'exceeded' ? 'BUDGET_EXCEEDED' : 'PRICING_CONFIG_MISSING',
-      };
+      });
     }
 
     // Count pending entries
@@ -92,16 +90,15 @@ export function registerRoutes(
     // Trigger processing if configured
     if (config.triggerProcessing) {
       // Don't await - let it run in background
-      config.triggerProcessing().catch((err) => {
+      void config.triggerProcessing().catch((err: unknown) => {
         console.error('Processing job failed:', err);
       });
     }
 
-    reply.status(202);
-    return {
+    return reply.status(202).send({
       message: 'Processing started',
       pendingCount: result.count,
-    };
+    });
   });
 
   // List feeds
@@ -114,11 +111,11 @@ export function registerRoutes(
   app.get<{ Params: { feedId: string } }>('/feed/:feedId.xml', async (request, reply) => {
     try {
       const xml = await feedHandlers.getFeedXml(request.params.feedId);
-      reply.header('Content-Type', 'application/rss+xml');
-      return xml;
+      return reply.header('Content-Type', 'application/rss+xml').send(xml);
     } catch (error) {
-      reply.status(404);
-      return { error: 'Not Found', message: 'Feed not found', code: 'NOT_FOUND' };
+      return reply
+        .status(404)
+        .send({ error: 'Not Found', message: 'Feed not found', code: 'NOT_FOUND' });
     }
   });
 }

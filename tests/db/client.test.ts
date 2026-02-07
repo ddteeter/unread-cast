@@ -20,9 +20,7 @@ describe('database client', () => {
 
     // Check tables exist
     const tables = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as { name: string }[];
 
     const tableNames = tables.map((t) => t.name);
@@ -39,9 +37,9 @@ describe('database client', () => {
     const { createDatabase } = await import('../../src/db/client.js');
     const db = createDatabase(join(tempDir, 'test.db'));
 
-    const defaultCat = db
-      .prepare('SELECT * FROM categories WHERE name = ?')
-      .get('default') as { name: string; feed_id: string } | undefined;
+    const defaultCat = db.prepare('SELECT * FROM categories WHERE name = ?').get('default') as
+      | { name: string; feed_id: string }
+      | undefined;
 
     expect(defaultCat).toBeDefined();
     expect(defaultCat?.feed_id).toMatch(

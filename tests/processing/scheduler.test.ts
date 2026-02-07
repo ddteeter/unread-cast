@@ -9,7 +9,7 @@ import type { Entry } from '../../src/types/index.js';
 // Mock node-cron
 vi.mock('node-cron', () => ({
   default: {
-    schedule: vi.fn((schedule: string, callback: () => void) => {
+    schedule: vi.fn((_schedule: string, _callback: () => void) => {
       return { start: vi.fn(), stop: vi.fn() };
     }),
   },
@@ -107,8 +107,10 @@ describe('scheduler', () => {
     it('should not process when lock is held', async () => {
       // Set lock to be held
       const now = new Date().toISOString();
-      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1')
-        .run(now, 'test-host');
+      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1').run(
+        now,
+        'test-host'
+      );
 
       const mockProcessEntry = vi.fn();
       const mockBudgetService = {
@@ -151,8 +153,10 @@ describe('scheduler', () => {
     it('should take over stale lock (older than 30 minutes)', async () => {
       // Set lock to be stale (31 minutes ago)
       const staleTime = new Date(Date.now() - 31 * 60 * 1000).toISOString();
-      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1')
-        .run(staleTime, 'old-host');
+      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1').run(
+        staleTime,
+        'old-host'
+      );
 
       const mockProcessEntry = vi.fn().mockResolvedValue({ success: true, entryId: 'test-id' });
       const mockBudgetService = {
@@ -363,7 +367,14 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, retry_count, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`
-      ).run(entryId, 'https://example.com/article', 'default', 'failed', 5, new Date().toISOString());
+      ).run(
+        entryId,
+        'https://example.com/article',
+        'default',
+        'failed',
+        5,
+        new Date().toISOString()
+      );
 
       const mockProcessEntry = vi.fn();
       const mockBudgetService = {
@@ -409,17 +420,35 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry1Id, 'https://example.com/article1', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry1Id,
+        'https://example.com/article1',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry2Id, 'https://example.com/article2', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry2Id,
+        'https://example.com/article2',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry3Id, 'https://example.com/article3', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry3Id,
+        'https://example.com/article3',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       const processedOrder: string[] = [];
       const mockProcessEntry = vi.fn().mockImplementation(async (entry: Entry) => {
@@ -518,17 +547,35 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry1Id, 'https://example.com/article1', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry1Id,
+        'https://example.com/article1',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry2Id, 'https://example.com/article2', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry2Id,
+        'https://example.com/article2',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entry3Id, 'https://example.com/article3', 'default', 'pending', new Date().toISOString());
+      ).run(
+        entry3Id,
+        'https://example.com/article3',
+        'default',
+        'pending',
+        new Date().toISOString()
+      );
 
       const mockProcessEntry = vi.fn().mockResolvedValue({ success: true, entryId: 'test' });
 
@@ -777,7 +824,13 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entryId, 'https://example.com/article', 'default', 'completed', new Date().toISOString());
+      ).run(
+        entryId,
+        'https://example.com/article',
+        'default',
+        'completed',
+        new Date().toISOString()
+      );
 
       // Create old episode (91 days ago)
       const oldDate = new Date();
@@ -831,12 +884,20 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entryId, 'https://example.com/article', 'default', 'processing', new Date().toISOString());
+      ).run(
+        entryId,
+        'https://example.com/article',
+        'default',
+        'processing',
+        new Date().toISOString()
+      );
 
       // Acquire lock to simulate processing job running
       const now = new Date().toISOString();
-      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1')
-        .run(now, 'test-host');
+      db.prepare('UPDATE processing_lock SET locked_at = ?, locked_by = ? WHERE id = 1').run(
+        now,
+        'test-host'
+      );
 
       const mockProcessEntry = vi.fn();
       const mockBudgetService = { getStatus: vi.fn(), canProcess: vi.fn() };
@@ -868,7 +929,9 @@ describe('scheduler', () => {
       expect(entry.status).toBe('processing'); // Still processing
 
       // Release lock for other tests
-      db.prepare('UPDATE processing_lock SET locked_at = NULL, locked_by = NULL WHERE id = 1').run();
+      db.prepare(
+        'UPDATE processing_lock SET locked_at = NULL, locked_by = NULL WHERE id = 1'
+      ).run();
     });
 
     it('should reset stuck processing entries', async () => {
@@ -877,7 +940,13 @@ describe('scheduler', () => {
       db.prepare(
         `INSERT INTO entries (id, url, category, status, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(entryId, 'https://example.com/article', 'default', 'processing', new Date().toISOString());
+      ).run(
+        entryId,
+        'https://example.com/article',
+        'default',
+        'processing',
+        new Date().toISOString()
+      );
 
       const mockProcessEntry = vi.fn();
       const mockBudgetService = { getStatus: vi.fn(), canProcess: vi.fn() };

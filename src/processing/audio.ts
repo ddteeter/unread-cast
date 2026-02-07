@@ -21,9 +21,7 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
     const concatFilePath = join(tempDir, `${episodeId}_concat.txt`);
 
     // Create concat file for ffmpeg
-    const concatContent = segmentFiles
-      .map((f) => `file '${f}'`)
-      .join('\n');
+    const concatContent = segmentFiles.map((f) => `file '${f}'`).join('\n');
     writeFileSync(concatFilePath, concatContent);
 
     // Calculate total duration by summing all segment durations

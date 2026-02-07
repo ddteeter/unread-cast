@@ -12,9 +12,11 @@ describe('feed handlers', () => {
     initializeSchema(db);
 
     // Add default category
-    db.prepare(
-      'INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)'
-    ).run('default', uuidv4(), new Date().toISOString());
+    db.prepare('INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)').run(
+      'default',
+      uuidv4(),
+      new Date().toISOString()
+    );
   });
 
   afterEach(() => {

@@ -32,9 +32,11 @@ describe('processing pipeline', () => {
     );
 
     // Create default category
-    db.prepare(
-      'INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)'
-    ).run('default', uuidv4(), new Date().toISOString());
+    db.prepare('INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)').run(
+      'default',
+      uuidv4(),
+      new Date().toISOString()
+    );
 
     // Create test entry
     entryId = uuidv4();
@@ -66,18 +68,23 @@ describe('processing pipeline', () => {
     const mockTranscriber = {
       generateTranscript: vi.fn().mockResolvedValue({
         transcript: [
-          { speaker: 'NARRATOR', text: 'Welcome to the podcast', instruction: 'Clear and engaging' },
-          { speaker: 'NARRATOR', text: 'This is the main content', instruction: 'Clear and engaging' },
+          {
+            speaker: 'NARRATOR',
+            text: 'Welcome to the podcast',
+            instruction: 'Clear and engaging',
+          },
+          {
+            speaker: 'NARRATOR',
+            text: 'This is the main content',
+            instruction: 'Clear and engaging',
+          },
         ],
         usage: { inputTokens: 1000, outputTokens: 500 },
       }),
     };
     const mockTTSProcessor = {
       processTranscript: vi.fn().mockResolvedValue({
-        segmentFiles: [
-          join(tempDir, `${entryId}_0.aac`),
-          join(tempDir, `${entryId}_1.aac`),
-        ],
+        segmentFiles: [join(tempDir, `${entryId}_0.aac`), join(tempDir, `${entryId}_1.aac`)],
         totalUsage: { characters: 1000 },
       }),
     };
@@ -309,7 +316,11 @@ describe('processing pipeline', () => {
     const mockTranscriber = {
       generateTranscript: vi.fn().mockResolvedValue({
         transcript: [
-          { speaker: 'NARRATOR', text: 'Welcome to the podcast', instruction: 'Clear and engaging' },
+          {
+            speaker: 'NARRATOR',
+            text: 'Welcome to the podcast',
+            instruction: 'Clear and engaging',
+          },
         ],
         usage: { inputTokens: 1000, outputTokens: 500 },
       }),

@@ -19,10 +19,21 @@ const configSchema = z.object({
   anthropicApiKey: z.string().optional(),
   llmProvider: z.enum(['openai', 'anthropic']).default('anthropic'),
   llmModel: z.string().default('claude-sonnet-4-5-20250929'),
-  ttsVoices: z.array(z.string()).default([
-    'alloy', 'ash', 'ballad', 'coral', 'echo',
-    'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'
-  ]),
+  ttsVoices: z
+    .array(z.string())
+    .default([
+      'alloy',
+      'ash',
+      'ballad',
+      'coral',
+      'echo',
+      'fable',
+      'nova',
+      'onyx',
+      'sage',
+      'shimmer',
+      'verse',
+    ]),
   feedTitle: z.string().default('Unread Cast'),
   feedAuthor: z.string().default('Unread Cast'),
   feedDescription: z.string().default('Auto-generated podcasts from articles'),

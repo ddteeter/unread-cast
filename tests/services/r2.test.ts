@@ -1,6 +1,5 @@
 // tests/services/r2.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Readable } from 'stream';
 
 describe('r2 service', () => {
   beforeEach(() => {

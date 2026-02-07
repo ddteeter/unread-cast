@@ -5,12 +5,7 @@ import type Database from 'better-sqlite3';
 import type { BudgetStatus, PricingConfig, UsageLog } from '../types/index.js';
 
 export interface BudgetService {
-  calculateCost(
-    service: string,
-    model: string,
-    inputUnits: number,
-    outputUnits?: number
-  ): number;
+  calculateCost(service: string, model: string, inputUnits: number, outputUnits?: number): number;
   logUsage(usage: Omit<UsageLog, 'id' | 'created_at'>): Promise<void>;
   getStatus(): Promise<BudgetStatus>;
   canProcess(): Promise<boolean>;
@@ -74,17 +69,15 @@ export function createBudgetService(
         throw err;
       }
       const inputCost = (inputUnits / 1_000_000) * modelConfig.input_per_1m;
-      const outputCost =
-        ((outputUnits ?? 0) / 1_000_000) * modelConfig.output_per_1m;
+      const outputCost = ((outputUnits ?? 0) / 1_000_000) * modelConfig.output_per_1m;
       return inputCost + outputCost;
     }
 
     throw new Error(`Unknown service: ${service}`);
   }
 
-  async function logUsage(
-    usage: Omit<UsageLog, 'id' | 'created_at'>
-  ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async function logUsage(usage: Omit<UsageLog, 'id' | 'created_at'>): Promise<void> {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
 
@@ -103,6 +96,7 @@ export function createBudgetService(
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function getStatus(): Promise<BudgetStatus> {
     const now = new Date();
     const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

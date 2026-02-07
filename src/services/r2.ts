@@ -1,9 +1,5 @@
 // src/services/r2.ts
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { PassThrough } from 'stream';
 import type { Readable } from 'stream';
@@ -68,7 +64,7 @@ export function createR2Service(config: R2Config): R2Service {
     }
 
     // For streams, use Upload for multipart
-    return uploadStream(key, body as Readable, contentType);
+    return uploadStream(key, body, contentType);
   }
 
   async function uploadStream(

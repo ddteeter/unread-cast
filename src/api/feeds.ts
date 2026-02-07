@@ -1,6 +1,6 @@
 // src/api/feeds.ts
 import type Database from 'better-sqlite3';
-import type { Episode, Category } from '../types/index.js';
+import type { Category } from '../types/index.js';
 
 export interface FeedConfig {
   baseUrl: string;
@@ -47,29 +47,26 @@ function formatRfc2822(date: Date): string {
   return date.toUTCString();
 }
 
-export function createFeedHandlers(
-  db: Database.Database,
-  config: FeedConfig
-): FeedHandlers {
+export function createFeedHandlers(db: Database.Database, config: FeedConfig): FeedHandlers {
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function listFeeds(): Promise<FeedInfo[]> {
-    const categories = db
-      .prepare('SELECT name, feed_id FROM categories ORDER BY name')
-      .all() as { name: string; feed_id: string }[];
+    const categories = db.prepare('SELECT name, feed_id FROM categories ORDER BY name').all() as {
+      name: string;
+      feed_id: string;
+    }[];
 
     return categories.map((cat) => ({
       category: cat.name,
-      title:
-        cat.name === 'default'
-          ? config.feedTitle
-          : `${config.feedTitle} - ${cat.name}`,
+      title: cat.name === 'default' ? config.feedTitle : `${config.feedTitle} - ${cat.name}`,
       url: `${config.baseUrl}/feed/${cat.feed_id}.xml`,
     }));
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function getCategoryByFeedId(feedId: string): Promise<Category | null> {
-    const row = db
-      .prepare('SELECT * FROM categories WHERE feed_id = ?')
-      .get(feedId) as { name: string; feed_id: string; created_at: string } | undefined;
+    const row = db.prepare('SELECT * FROM categories WHERE feed_id = ?').get(feedId) as
+      | { name: string; feed_id: string; created_at: string }
+      | undefined;
 
     if (!row) return null;
 
@@ -88,9 +85,7 @@ export function createFeedHandlers(
 
     const categoryName = category.name;
     const title =
-      categoryName === 'default'
-        ? config.feedTitle
-        : `${config.feedTitle} - ${categoryName}`;
+      categoryName === 'default' ? config.feedTitle : `${config.feedTitle} - ${categoryName}`;
 
     // Get episodes for this category (limit 50, newest first)
     const episodes = db

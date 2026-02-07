@@ -10,14 +10,14 @@ export function createDatabase(dbPath: string): Database.Database {
   initializeSchema(db);
 
   // Ensure default category exists
-  const defaultCategory = db
-    .prepare('SELECT * FROM categories WHERE name = ?')
-    .get('default');
+  const defaultCategory = db.prepare('SELECT * FROM categories WHERE name = ?').get('default');
 
   if (!defaultCategory) {
-    db.prepare(
-      'INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)'
-    ).run('default', uuidv4(), new Date().toISOString());
+    db.prepare('INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)').run(
+      'default',
+      uuidv4(),
+      new Date().toISOString()
+    );
   }
 
   // Ensure processing_lock row exists

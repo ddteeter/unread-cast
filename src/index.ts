@@ -48,10 +48,7 @@ async function main() {
     process.exit(1);
   }
 
-  const pushoverService = createPushoverService(
-    config.pushoverUserKey,
-    config.pushoverAppToken
-  );
+  const pushoverService = createPushoverService(config.pushoverUserKey, config.pushoverAppToken);
 
   const r2Service = createR2Service({
     accountId: config.r2AccountId,
@@ -109,7 +106,7 @@ async function main() {
       db,
       budgetService,
       pushoverService,
-      processEntry: pipeline.processEntry,
+      processEntry: (entry) => pipeline.processEntry(entry),
     },
     {
       cronSchedule: config.cronSchedule,
@@ -163,8 +160,8 @@ async function main() {
   };
 
   // Register signal handlers
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 
   // Start server
   await app.listen({ port: config.port, host: '0.0.0.0' });

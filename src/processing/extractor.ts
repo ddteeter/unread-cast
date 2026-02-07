@@ -8,6 +8,7 @@ export interface ExtractionResult {
   byline?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function extractContent(html: string): Promise<ExtractionResult> {
   const dom = new JSDOM(html, { url: 'https://example.com' });
   const reader = new Readability(dom.window.document);

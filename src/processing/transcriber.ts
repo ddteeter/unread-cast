@@ -21,14 +21,9 @@ export function createTranscriber(
   anthropicService: AnthropicService | null,
   config: TranscriberConfig
 ) {
-  async function generateTranscript(
-    content: string,
-    title: string
-  ): Promise<TranscriberResult> {
+  async function generateTranscript(content: string, title: string): Promise<TranscriberResult> {
     if (content.length < config.minContentLength) {
-      throw new Error(
-        `Content too short: ${content.length} < ${config.minContentLength}`
-      );
+      throw new Error(`Content too short: ${content.length} < ${config.minContentLength}`);
     }
 
     if (config.provider === 'anthropic' && anthropicService) {
@@ -54,7 +49,12 @@ export function createTranscriber(
 
   async function extractContentWithLLM(
     html: string
-  ): Promise<{ content: string; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }> {
+  ): Promise<{
+    content: string;
+    usage: LLMUsage;
+    provider: 'openai' | 'anthropic';
+    model: string;
+  }> {
     if (config.provider === 'anthropic' && anthropicService) {
       const result = await anthropicService.extractContent(html, config.model);
       return {

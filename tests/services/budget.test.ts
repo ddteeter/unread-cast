@@ -34,11 +34,7 @@ describe('budget service', () => {
 
   it('should calculate cost correctly for chat models', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      100
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
 
     // 1000 input tokens, 500 output tokens at gpt-4o rates
     const cost = service.calculateCost('openai_chat', 'gpt-4o', 1000, 500);
@@ -48,11 +44,7 @@ describe('budget service', () => {
 
   it('should calculate cost correctly for TTS', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      100
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
 
     // 10000 characters at gpt-4o-mini-tts rates
     const cost = service.calculateCost('openai_tts', 'gpt-4o-mini-tts', 10000);
@@ -62,11 +54,7 @@ describe('budget service', () => {
 
   it('should return correct budget status', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      20
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 20);
 
     // Log some usage
     await service.logUsage({
@@ -89,11 +77,7 @@ describe('budget service', () => {
 
   it('should block processing when budget exceeded', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      10
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 10);
 
     await service.logUsage({
       entry_id: null,
@@ -114,24 +98,16 @@ describe('budget service', () => {
 
   it('should throw if model not in pricing config', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      100
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
 
-    expect(() =>
-      service.calculateCost('openai_chat', 'unknown-model', 1000, 500)
-    ).toThrow('PRICING_CONFIG_MISSING');
+    expect(() => service.calculateCost('openai_chat', 'unknown-model', 1000, 500)).toThrow(
+      'PRICING_CONFIG_MISSING'
+    );
   });
 
   it('should prevent processing when budget is at exactly 100%', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      10
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 10);
 
     // Log usage that exactly meets the budget
     await service.logUsage({
@@ -178,11 +154,7 @@ describe('budget service', () => {
 
   it('should allow processing just below 100% threshold', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      10
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 10);
 
     // Log usage at 99.9%
     await service.logUsage({
@@ -218,19 +190,10 @@ describe('budget service', () => {
     );
 
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      100
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
 
     // Test Anthropic cost calculation
-    const cost = service.calculateCost(
-      'anthropic_chat',
-      'claude-3-5-sonnet-20241022',
-      1000,
-      500
-    );
+    const cost = service.calculateCost('anthropic_chat', 'claude-3-5-sonnet-20241022', 1000, 500);
     // (1000/1_000_000 * 3.0) + (500/1_000_000 * 15.0) = 0.003 + 0.0075 = 0.0105
     expect(cost).toBeCloseTo(0.0105, 6);
   });
@@ -249,17 +212,28 @@ describe('budget service', () => {
 
   it('should track usage across multiple entries', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
-    const service = createBudgetService(
-      db,
-      join(tempDir, 'pricing.json'),
-      50
-    );
+    const service = createBudgetService(db, join(tempDir, 'pricing.json'), 50);
 
     // Create entries in database (required for foreign key constraint)
     const now = new Date().toISOString();
-    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-1', 'https://example.com/1', 'pending', now);
-    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-2', 'https://example.com/2', 'pending', now);
-    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-3', 'https://example.com/3', 'pending', now);
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run(
+      'entry-1',
+      'https://example.com/1',
+      'pending',
+      now
+    );
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run(
+      'entry-2',
+      'https://example.com/2',
+      'pending',
+      now
+    );
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run(
+      'entry-3',
+      'https://example.com/3',
+      'pending',
+      now
+    );
 
     // Log multiple usage entries
     await service.logUsage({

@@ -1,11 +1,7 @@
 // src/services/pushover.ts
 export interface PushoverService {
   send(title: string, message: string, priority?: number): Promise<void>;
-  sendBudgetWarning(
-    percentUsed: number,
-    spent: number,
-    budget: number
-  ): Promise<void>;
+  sendBudgetWarning(percentUsed: number, spent: number, budget: number): Promise<void>;
   sendBudgetExceeded(spent: number, budget: number): Promise<void>;
   sendProcessingFailed(entryId: string, url: string, error: string): Promise<void>;
 }
@@ -16,11 +12,7 @@ export function createPushoverService(
 ): PushoverService {
   const isConfigured = Boolean(userKey && appToken);
 
-  async function send(
-    title: string,
-    message: string,
-    priority: number = 0
-  ): Promise<void> {
+  async function send(title: string, message: string, priority: number = 0): Promise<void> {
     if (!isConfigured) {
       console.log(`[Pushover disabled] ${title}: ${message}`);
       return;
@@ -58,10 +50,7 @@ export function createPushoverService(
     );
   }
 
-  async function sendBudgetExceeded(
-    spent: number,
-    budget: number
-  ): Promise<void> {
+  async function sendBudgetExceeded(spent: number, budget: number): Promise<void> {
     await send(
       'Unread Cast - Budget Exceeded',
       `Monthly budget exceeded ($${spent.toFixed(2)} of $${budget.toFixed(2)}). Processing is paused until next month.`,
@@ -69,11 +58,7 @@ export function createPushoverService(
     );
   }
 
-  async function sendProcessingFailed(
-    entryId: string,
-    url: string,
-    error: string
-  ): Promise<void> {
+  async function sendProcessingFailed(entryId: string, url: string, error: string): Promise<void> {
     await send(
       'Unread Cast - Processing Failed',
       `Entry ${entryId} failed after max retries.\nURL: ${url}\nError: ${error}`

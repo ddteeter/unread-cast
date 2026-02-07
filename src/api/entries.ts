@@ -24,6 +24,7 @@ function isValidUrl(urlString: string): boolean {
 }
 
 export function createEntryHandlers(db: Database.Database): EntryHandlers {
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function createEntry(input: CreateEntryInput): Promise<Entry> {
     if (!isValidUrl(input.url)) {
       const error = new Error('Invalid URL format');
@@ -32,9 +33,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
     }
 
     // Check for duplicate
-    const existing = db
-      .prepare('SELECT id FROM entries WHERE url = ?')
-      .get(input.url);
+    const existing = db.prepare('SELECT id FROM entries WHERE url = ?').get(input.url);
 
     if (existing) {
       const error = new Error('URL already exists');
@@ -58,9 +57,11 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
         .get(category);
 
       if (!existingCategory) {
-        db.prepare(
-          'INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)'
-        ).run(category, uuidv4(), createdAt);
+        db.prepare('INSERT INTO categories (name, feed_id, created_at) VALUES (?, ?, ?)').run(
+          category,
+          uuidv4(),
+          createdAt
+        );
       }
     }
 
@@ -80,6 +81,7 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function getEntry(id: string): Promise<Entry | null> {
     const row = db.prepare('SELECT * FROM entries WHERE id = ?').get(id) as
       | Record<string, unknown>
@@ -90,16 +92,16 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
     return row as unknown as Entry;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function listEntries(status?: string): Promise<Entry[]> {
     const query = status
       ? 'SELECT * FROM entries WHERE status = ? ORDER BY created_at DESC'
       : 'SELECT * FROM entries ORDER BY created_at DESC';
 
-    const rows = (
-      status
-        ? db.prepare(query).all(status)
-        : db.prepare(query).all()
-    ) as Record<string, unknown>[];
+    const rows = (status ? db.prepare(query).all(status) : db.prepare(query).all()) as Record<
+      string,
+      unknown
+    >[];
 
     return rows as unknown as Entry[];
   }

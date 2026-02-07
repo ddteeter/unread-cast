@@ -1,7 +1,7 @@
 // src/processing/tts.ts
 import { writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import type { Transcript, TranscriptSegment } from '../types/index.js';
+import { join } from 'path';
+import type { Transcript } from '../types/index.js';
 import type { OpenAIService, TTSUsage } from '../services/openai.js';
 
 export interface TTSConfig {
@@ -23,14 +23,8 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function createTTSProcessor(
-  openaiService: OpenAIService,
-  config: TTSConfig
-) {
-  async function processTranscript(
-    transcript: Transcript,
-    entryId: string
-  ): Promise<TTSResult> {
+export function createTTSProcessor(openaiService: OpenAIService, config: TTSConfig) {
+  async function processTranscript(transcript: Transcript, entryId: string): Promise<TTSResult> {
     // Assign voices to speakers
     const shuffledVoices = shuffleArray(config.voices);
     const voiceAssignment: Record<string, string> = {};
@@ -57,15 +51,12 @@ export function createTTSProcessor(
 
       // Truncate instruction if too long (OpenAI TTS instruction limit is ~500 chars)
       const MAX_INSTRUCTION_LENGTH = 400;
-      const instruction = segment.instruction.length > MAX_INSTRUCTION_LENGTH
-        ? segment.instruction.substring(0, MAX_INSTRUCTION_LENGTH)
-        : segment.instruction;
+      const instruction =
+        segment.instruction.length > MAX_INSTRUCTION_LENGTH
+          ? segment.instruction.substring(0, MAX_INSTRUCTION_LENGTH)
+          : segment.instruction;
 
-      const { audio, usage } = await openaiService.textToSpeech(
-        segment.text,
-        voice,
-        instruction
-      );
+      const { audio, usage } = await openaiService.textToSpeech(segment.text, voice, instruction);
 
       const filename = join(config.tempDir, `${entryId}_${i}.aac`);
       writeFileSync(filename, audio);

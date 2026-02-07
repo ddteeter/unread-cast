@@ -9,10 +9,7 @@ export interface AnthropicService {
     title: string,
     model: string
   ): Promise<{ transcript: Transcript; usage: LLMUsage }>;
-  extractContent(
-    html: string,
-    model: string
-  ): Promise<{ content: string; usage: LLMUsage }>;
+  extractContent(html: string, model: string): Promise<{ content: string; usage: LLMUsage }>;
 }
 
 const TRANSCRIPT_SYSTEM_PROMPT = `You are a podcast script writer. Convert the following article into an engaging podcast transcript.
@@ -96,8 +93,8 @@ export function createAnthropicService(
       }
 
       const segments: TranscriptSegment[] = Array.isArray(parsed)
-        ? parsed
-        : (parsed as { transcript?: TranscriptSegment[] }).transcript ?? [];
+        ? (parsed as TranscriptSegment[])
+        : ((parsed as { transcript?: TranscriptSegment[] }).transcript ?? []);
 
       for (const segment of segments) {
         if (!segment.speaker || !segment.text || !segment.instruction) {

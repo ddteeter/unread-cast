@@ -31,10 +31,12 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
 
   function acquireLock(): boolean {
     // First check if lock row exists
-    const lockRow = db.prepare('SELECT * FROM processing_lock WHERE id = 1').get() as {
-      locked_at: string | null;
-      locked_by: string | null;
-    } | undefined;
+    const lockRow = db.prepare('SELECT * FROM processing_lock WHERE id = 1').get() as
+      | {
+          locked_at: string | null;
+          locked_by: string | null;
+        }
+      | undefined;
 
     if (!lockRow) {
       console.error('Processing lock row not initialized in database');
@@ -45,12 +47,16 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
     const now = new Date().toISOString();
     const staleThreshold = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
 
-    const result = db.prepare(`
+    const result = db
+      .prepare(
+        `
       UPDATE processing_lock
       SET locked_at = ?, locked_by = ?
       WHERE id = 1
         AND (locked_at IS NULL OR locked_at < ?)
-    `).run(now, hostname(), staleThreshold);
+    `
+      )
+      .run(now, hostname(), staleThreshold);
 
     const acquired = result.changes > 0;
     if (!acquired) {
@@ -75,16 +81,15 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
         const status = await budgetService.getStatus();
 
         if (status.status === 'warning' && previousBudgetStatus === 'ok') {
-          await pushoverService.sendBudgetWarning(
-            status.percent_used,
-            status.spent_usd,
-            status.budget_usd
-          ).catch(err => {
-            console.error('Failed to send budget warning:', err);
-          });
+          await pushoverService
+            .sendBudgetWarning(status.percent_used, status.spent_usd, status.budget_usd)
+            .catch((err) => {
+              console.error('Failed to send budget warning:', err);
+            });
         } else if (status.status === 'exceeded' && previousBudgetStatus !== 'exceeded') {
-          await pushoverService.sendBudgetExceeded(status.spent_usd, status.budget_usd)
-            .catch(err => {
+          await pushoverService
+            .sendBudgetExceeded(status.spent_usd, status.budget_usd)
+            .catch((err) => {
               console.error('Failed to send budget exceeded notification:', err);
             });
         }
@@ -104,12 +109,14 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
 
       // Get pending entries
       const now = new Date().toISOString();
-      const entries = db.prepare(
-        `SELECT * FROM entries
+      const entries = db
+        .prepare(
+          `SELECT * FROM entries
          WHERE status = 'pending'
          OR (status = 'failed' AND retry_count < 5 AND (next_retry_at IS NULL OR next_retry_at <= ?))
          ORDER BY created_at ASC`
-      ).all(now) as Record<string, unknown>[];
+        )
+        .all(now) as Record<string, unknown>[];
 
       console.log(`Found ${entries.length} entries to process`);
 
@@ -149,6 +156,7 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async function runCleanupJob(): Promise<void> {
     console.log('Running cleanup job');
 
@@ -156,7 +164,8 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - config.retentionDays);
 
-    const deleted = db.prepare('DELETE FROM episodes WHERE published_at < ?')
+    const deleted = db
+      .prepare('DELETE FROM episodes WHERE published_at < ?')
       .run(cutoffDate.toISOString());
 
     console.log(`Deleted ${deleted.changes} old episodes`);
@@ -164,9 +173,9 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
     // Reset stuck processing entries (requires lock to avoid race with processing job)
     if (acquireLock()) {
       try {
-        const resetResult = db.prepare(
-          "UPDATE entries SET status = 'pending' WHERE status = 'processing'"
-        ).run();
+        const resetResult = db
+          .prepare("UPDATE entries SET status = 'pending' WHERE status = 'processing'")
+          .run();
 
         if (resetResult.changes > 0) {
           console.log(`Reset ${resetResult.changes} stuck entries`);

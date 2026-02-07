@@ -29,8 +29,15 @@ interface Transcriber {
   generateTranscript(
     content: string,
     title: string
-  ): Promise<{ transcript: Transcript; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }>;
-  extractContentWithLLM(html: string): Promise<{ content: string; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }>;
+  ): Promise<{
+    transcript: Transcript;
+    usage: LLMUsage;
+    provider: 'openai' | 'anthropic';
+    model: string;
+  }>;
+  extractContentWithLLM(
+    html: string
+  ): Promise<{ content: string; usage: LLMUsage; provider: 'openai' | 'anthropic'; model: string }>;
 }
 
 interface TTSProcessor {
@@ -85,7 +92,8 @@ export function createProcessingPipeline(
       const html = await fetchHtml(entry.url);
 
       // Step 2: Extract content
-      let { title, content } = await extractContent(html);
+      const { title, content: extractedContent } = await extractContent(html);
+      let content = extractedContent;
 
       // Fallback to LLM if content too short
       if (content.length < config.minContentLength) {
@@ -115,14 +123,18 @@ export function createProcessingPipeline(
       }
 
       // Update entry with extracted content
-      db.prepare('UPDATE entries SET title = ?, extracted_content = ? WHERE id = ?')
-        .run(title || 'Untitled', content, entryId);
+      db.prepare('UPDATE entries SET title = ?, extracted_content = ? WHERE id = ?').run(
+        title || 'Untitled',
+        content,
+        entryId
+      );
 
       // Step 3: Generate transcript
       const transcriptResult = await transcriber.generateTranscript(content, title || 'Untitled');
 
       // Log transcript usage
-      const transcriptService = transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
+      const transcriptService =
+        transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
       await budgetService.logUsage({
         entry_id: entryId,
         service: transcriptService,
@@ -138,8 +150,10 @@ export function createProcessingPipeline(
       });
 
       // Update entry with transcript
-      db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?')
-        .run(JSON.stringify(transcriptResult.transcript), entryId);
+      db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?').run(
+        JSON.stringify(transcriptResult.transcript),
+        entryId
+      );
 
       // Step 4: Generate TTS
       const { segmentFiles: audioSegments, totalUsage: ttsUsage } =
@@ -154,11 +168,7 @@ export function createProcessingPipeline(
         model: 'gpt-4o-mini-tts',
         input_units: ttsUsage.characters,
         output_units: null,
-        cost_usd: budgetService.calculateCost(
-          'openai_tts',
-          'gpt-4o-mini-tts',
-          ttsUsage.characters
-        ),
+        cost_usd: budgetService.calculateCost('openai_tts', 'gpt-4o-mini-tts', ttsUsage.characters),
       });
 
       // Step 5: Merge and upload
@@ -188,22 +198,27 @@ export function createProcessingPipeline(
       );
 
       // Mark entry as completed
-      db.prepare('UPDATE entries SET status = ?, processed_at = ? WHERE id = ?')
-        .run('completed', publishedAt, entryId);
+      db.prepare('UPDATE entries SET status = ?, processed_at = ? WHERE id = ?').run(
+        'completed',
+        publishedAt,
+        entryId
+      );
 
       return { success: true, entry_id: entryId, episode_id: episodeId };
-
     } catch (error) {
       const err = error as Error;
       // Get current retry count from database (in case entry object is stale)
-      const dbEntry = db.prepare('SELECT retry_count FROM entries WHERE id = ?').get(entryId) as { retry_count: number } | undefined;
+      const dbEntry = db.prepare('SELECT retry_count FROM entries WHERE id = ?').get(entryId) as
+        | { retry_count: number }
+        | undefined;
       const currentRetryCount = dbEntry?.retry_count ?? 0;
       const newRetryCount = currentRetryCount + 1;
 
       if (newRetryCount >= config.maxRetries) {
         // Mark as permanently failed
-        db.prepare('UPDATE entries SET status = ?, error_message = ?, retry_count = ? WHERE id = ?')
-          .run('failed', err.message, newRetryCount, entryId);
+        db.prepare(
+          'UPDATE entries SET status = ?, error_message = ?, retry_count = ? WHERE id = ?'
+        ).run('failed', err.message, newRetryCount, entryId);
 
         // Send failure notification
         await pushoverService.sendProcessingFailed(entryId, entry.url, err.message);
@@ -213,8 +228,9 @@ export function createProcessingPipeline(
         // First retry (currentRetryCount=0): 2^0 = 1 minute
         // Second retry (currentRetryCount=1): 2^1 = 2 minutes
         const nextRetryAt = calculateNextRetryAt(currentRetryCount);
-        db.prepare('UPDATE entries SET status = ?, error_message = ?, retry_count = ?, next_retry_at = ? WHERE id = ?')
-          .run('failed', err.message, newRetryCount, nextRetryAt, entryId);
+        db.prepare(
+          'UPDATE entries SET status = ?, error_message = ?, retry_count = ?, next_retry_at = ? WHERE id = ?'
+        ).run('failed', err.message, newRetryCount, nextRetryAt, entryId);
       }
 
       // Keep segments for retry if upload failed

@@ -10,9 +10,7 @@ describe('pushover service', () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
-    const { createPushoverService } = await import(
-      '../../src/services/pushover.js'
-    );
+    const { createPushoverService } = await import('../../src/services/pushover.js');
     const service = createPushoverService('user-key', 'app-token');
 
     await service.send('Test Title', 'Test message');
@@ -30,9 +28,7 @@ describe('pushover service', () => {
     const mockFetch = vi.fn();
     global.fetch = mockFetch;
 
-    const { createPushoverService } = await import(
-      '../../src/services/pushover.js'
-    );
+    const { createPushoverService } = await import('../../src/services/pushover.js');
     const service = createPushoverService(undefined, undefined);
 
     await service.send('Test Title', 'Test message');
@@ -44,9 +40,7 @@ describe('pushover service', () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
-    const { createPushoverService } = await import(
-      '../../src/services/pushover.js'
-    );
+    const { createPushoverService } = await import('../../src/services/pushover.js');
     const service = createPushoverService('user-key', 'app-token');
 
     await service.sendBudgetWarning(82, 16.4, 20);

@@ -17,10 +17,7 @@ export interface OpenAIService {
     title: string,
     model: string
   ): Promise<{ transcript: Transcript; usage: LLMUsage }>;
-  extractContent(
-    html: string,
-    model: string
-  ): Promise<{ content: string; usage: LLMUsage }>;
+  extractContent(html: string, model: string): Promise<{ content: string; usage: LLMUsage }>;
   textToSpeech(
     text: string,
     voice: string,
@@ -109,8 +106,8 @@ export function createOpenAIService(
 
       // Handle both array directly and object with array property
       const segments: TranscriptSegment[] = Array.isArray(parsed)
-        ? parsed
-        : (parsed as { transcript?: TranscriptSegment[] }).transcript ?? [];
+        ? (parsed as TranscriptSegment[])
+        : ((parsed as { transcript?: TranscriptSegment[] }).transcript ?? []);
 
       // Validate each segment
       for (const segment of segments) {
@@ -184,7 +181,18 @@ export function createOpenAIService(
   ): Promise<{ audio: Buffer; usage: TTSUsage }> {
     const response = await client.audio.speech.create({
       model: 'gpt-4o-mini-tts',
-      voice: voice as 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'fable' | 'nova' | 'onyx' | 'sage' | 'shimmer' | 'verse',
+      voice: voice as
+        | 'alloy'
+        | 'ash'
+        | 'ballad'
+        | 'coral'
+        | 'echo'
+        | 'fable'
+        | 'nova'
+        | 'onyx'
+        | 'sage'
+        | 'shimmer'
+        | 'verse',
       input: text,
       instructions: instruction,
       response_format: 'aac',
