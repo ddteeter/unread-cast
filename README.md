@@ -57,8 +57,17 @@ npm test
 
 ## Production Deployment
 
+The Docker image includes a bundled pricing.json with current API rates, so no manual setup is required:
+
 ```bash
 docker-compose up -d
+```
+
+To override with custom pricing, mount your own file:
+```yaml
+volumes:
+  - ./data:/data
+  - ./my-custom-pricing.json:/app/pricing.json
 ```
 
 ## Configuration
@@ -70,17 +79,21 @@ See `.env` file for all configuration options. Key settings:
   - **Anthropic models**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (recommended)
   - **OpenAI models**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
 - `MONTHLY_BUDGET_USD`: Monthly spending limit in USD
-- `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json`)
+- `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json` for local dev, `/app/pricing.json` for Docker)
 
 ## API Pricing
 
-The application requires a pricing configuration file at `data/pricing.json` (or the path specified in `PRICING_CONFIG_PATH`). This file contains pricing information for API calls:
+The application requires a pricing configuration file containing pricing information for API calls:
 
 - OpenAI chat models (per million tokens)
 - OpenAI TTS models (per million characters)
 - Anthropic models (per million tokens)
 
-**Important:** Update the pricing configuration periodically to reflect current API pricing from providers. See `data/pricing.json.example` for the required format.
+**For Docker deployments:** Pricing configuration is bundled in the image at `/app/pricing.json` with current rates. No setup required.
+
+**For local development:** Copy `data/pricing.json.example` to `data/pricing.json` (as shown in Installation step 2).
+
+**Important:** The bundled pricing reflects rates as of the image build date. For production use, consider periodically rebuilding the image or mounting a custom pricing file to reflect current API costs. See `data/pricing.json.example` for the required format.
 
 ## License
 

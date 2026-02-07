@@ -89,10 +89,12 @@ All config via environment variables, validated with Zod schema in `src/config.t
 - `MONTHLY_BUDGET_USD` - Cost protection limit
 
 **Critical: Pricing Config**
-- `data/pricing.json` REQUIRED for cost calculation
+- Pricing configuration REQUIRED for cost calculation
 - Contains per-million pricing for OpenAI/Anthropic models
+- Docker deployments: bundled at `/app/pricing.json` with current rates
+- Local development: copy `data/pricing.json.example` to `data/pricing.json`
 - See `data/pricing.json.example` for format
-- Update regularly as API prices change
+- Update regularly as API prices change (rebuild Docker image or mount custom file)
 
 **Optional:**
 - `LLM_PROVIDER` - Choose `anthropic` (default) or `openai`
@@ -147,7 +149,7 @@ Dynamic XML generation in `src/api/feeds.ts`:
 ## Important Constraints
 
 1. **Budget enforcement is critical** - Never bypass budget checks or allow processing when `canProcess()` returns false
-2. **Pricing config must exist** - Application won't start without valid `data/pricing.json`
+2. **Pricing config must exist** - Application won't start without valid pricing configuration (bundled in Docker, or `data/pricing.json` for local dev)
 3. **Single instance processing** - `processing_lock` table prevents concurrent runs; scheduler respects this
 4. **Audio segment cleanup** - Only delete temp files on success; keep on failure for retry
 5. **Database is single file** - All data in one SQLite file; backup by copying `/data/unread-cast.db`
