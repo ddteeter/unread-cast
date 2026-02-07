@@ -35,6 +35,9 @@ RUN npm ci --only=production
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy default pricing config into the image
+COPY data/pricing.json.example /app/pricing.json
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
