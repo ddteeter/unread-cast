@@ -92,11 +92,26 @@ export function createProcessingPipeline(
       const html = await fetchHtml(entry.url);
 
       // Step 2: Extract content
-      const { title, content: extractedContent } = await extractContent(html);
-      let content = extractedContent;
+      let title = '';
+      let content = '';
+      let useLLMFallback = false;
 
-      // Fallback to LLM if content too short
-      if (content.length < config.minContentLength) {
+      try {
+        const result = await extractContent(html);
+        title = result.title;
+        content = result.content;
+
+        // Check if content is too short
+        if (content.length < config.minContentLength) {
+          useLLMFallback = true;
+        }
+      } catch (error) {
+        // Readability failed - fall back to LLM
+        useLLMFallback = true;
+      }
+
+      // Fallback to LLM if extraction failed or content too short
+      if (useLLMFallback) {
         const llmResult = await transcriber.extractContentWithLLM(html);
         content = llmResult.content;
 

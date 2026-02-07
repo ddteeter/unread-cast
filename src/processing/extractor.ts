@@ -15,10 +15,7 @@ export async function extractContent(html: string): Promise<ExtractionResult> {
   const article = reader.parse();
 
   if (!article) {
-    return {
-      title: '',
-      content: '',
-    };
+    throw new Error('Readability failed to parse article');
   }
 
   return {

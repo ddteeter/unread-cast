@@ -374,9 +374,68 @@ describe('processing pipeline', () => {
 
   it('should use LLM extraction fallback when readability fails', async () => {
     const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Content</body></html>');
+    const mockExtractContent = vi.fn().mockRejectedValue(new Error('Readability failed to parse article'));
+    const mockTranscriber = {
+      extractContentWithLLM: vi.fn().mockResolvedValue({
+        content: 'LLM extracted content '.repeat(50),
+        usage: { inputTokens: 500, outputTokens: 200 },
+      }),
+      generateTranscript: vi.fn().mockResolvedValue({
+        transcript: [{ speaker: 'NARRATOR', text: 'Text', instruction: 'Clear' }],
+        usage: { inputTokens: 1000, outputTokens: 500 },
+      }),
+    };
+    const mockTTSProcessor = {
+      processTranscript: vi.fn().mockResolvedValue({
+        segmentFiles: [join(tempDir, `${entryId}_0.aac`)],
+        totalUsage: { characters: 1000 },
+      }),
+    };
+    const mockAudioMerger = {
+      mergeAndUpload: vi.fn().mockResolvedValue({
+        audioKey: 'episode.aac',
+        audioUrl: 'https://r2.example.com/episode.aac',
+        audioDuration: 120,
+        audioSize: 1024000,
+      }),
+      cleanupSegments: vi.fn(),
+    };
+    const mockBudgetService = {
+      calculateCost: vi.fn().mockReturnValue(0.05),
+      logUsage: vi.fn().mockResolvedValue(undefined),
+    };
+    const mockPushoverService = {
+      sendProcessingFailed: vi.fn(),
+    };
+
+    writeFileSync(join(tempDir, `${entryId}_0.aac`), 'fake audio');
+
+    const { createProcessingPipeline } = await import('../../src/processing/pipeline.js');
+    const pipeline = createProcessingPipeline(
+      db,
+      mockBudgetService as any,
+      mockPushoverService as any,
+      mockFetchHtml,
+      mockExtractContent,
+      mockTranscriber as any,
+      mockTTSProcessor as any,
+      mockAudioMerger as any,
+      { minContentLength: 500, maxRetries: 3 }
+    );
+
+    const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
+    const result = await pipeline.processEntry(entry);
+
+    expect(result.success).toBe(true);
+    expect(mockTranscriber.extractContentWithLLM).toHaveBeenCalled();
+    expect(mockBudgetService.logUsage).toHaveBeenCalledTimes(3); // extraction + transcript + TTS
+  });
+
+  it('should use LLM extraction fallback when content too short', async () => {
+    const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Content</body></html>');
     const mockExtractContent = vi.fn().mockResolvedValue({
-      title: '',
-      content: '', // Empty indicates failure
+      title: 'Short Article',
+      content: 'Too short', // Less than minContentLength (500)
     });
     const mockTranscriber = {
       extractContentWithLLM: vi.fn().mockResolvedValue({
@@ -430,6 +489,7 @@ describe('processing pipeline', () => {
     const result = await pipeline.processEntry(entry);
 
     expect(result.success).toBe(true);
+    expect(mockExtractContent).toHaveBeenCalled();
     expect(mockTranscriber.extractContentWithLLM).toHaveBeenCalled();
     expect(mockBudgetService.logUsage).toHaveBeenCalledTimes(3); // extraction + transcript + TTS
   });

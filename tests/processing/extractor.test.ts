@@ -27,4 +27,13 @@ describe('extractor', () => {
     expect(result.content).not.toContain('Navigation');
     expect(result.content).not.toContain('Footer');
   });
+
+  it('should throw error when Readability fails to parse', async () => {
+    const { extractContent } = await import('../../src/processing/extractor.js');
+
+    // Empty/minimal HTML that Readability cannot extract meaningful article from
+    const html = '<html><head></head><body></body></html>';
+
+    await expect(extractContent(html)).rejects.toThrow('Readability failed to parse article');
+  });
 });
