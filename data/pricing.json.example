@@ -26,9 +26,8 @@
   },
   "anthropic": {
     "claude-opus-4-6": {
-      "input_per_1m": 15.00,
-      "output_per_1m": 75.00,
-      "note": "Pricing estimated - verify at console.anthropic.com"
+      "input_per_1m": 5.00,
+      "output_per_1m": 25.00
     },
     "claude-opus-4-5-20251101": {
       "input_per_1m": 15.00,
