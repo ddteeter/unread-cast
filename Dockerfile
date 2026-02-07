@@ -1,8 +1,5 @@
-# Base image
-FROM node:24-alpine
-
-# Install ffmpeg for audio processing and wget for healthcheck
-RUN apk add --no-cache ffmpeg wget
+# Build stage
+FROM node:24-alpine AS builder
 
 # Create app directory
 WORKDIR /app
@@ -20,9 +17,23 @@ COPY src ./src
 # Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies and source files to reduce image size
-RUN rm -rf src node_modules && \
-    npm ci --only=production
+# Production stage
+FROM node:24-alpine
+
+# Install ffmpeg for audio processing and wget for healthcheck
+RUN apk add --no-cache ffmpeg wget
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

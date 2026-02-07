@@ -55,10 +55,16 @@ export function createTTSProcessor(
       const segment = transcript[i];
       const voice = voiceAssignment[segment.speaker];
 
+      // Truncate instruction if too long (OpenAI TTS instruction limit is ~500 chars)
+      const MAX_INSTRUCTION_LENGTH = 400;
+      const instruction = segment.instruction.length > MAX_INSTRUCTION_LENGTH
+        ? segment.instruction.substring(0, MAX_INSTRUCTION_LENGTH)
+        : segment.instruction;
+
       const { audio, usage } = await openaiService.textToSpeech(
         segment.text,
         voice,
-        segment.instruction
+        instruction
       );
 
       const filename = join(config.tempDir, `${entryId}_${i}.aac`);
