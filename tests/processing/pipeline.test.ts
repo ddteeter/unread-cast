@@ -376,7 +376,9 @@ describe('processing pipeline', () => {
 
   it('should use LLM extraction fallback when readability fails', async () => {
     const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Content</body></html>');
-    const mockExtractContent = vi.fn().mockRejectedValue(new Error('Readability failed to parse article'));
+    const mockExtractContent = vi
+      .fn()
+      .mockRejectedValue(new Error('Readability failed to parse article'));
     const mockTranscriber = {
       extractContentWithLLM: vi.fn().mockResolvedValue({
         content: 'LLM extracted content '.repeat(50),
