@@ -33,9 +33,85 @@ npm run test:watch
 # Run specific test file
 npx vitest run tests/processing/pipeline.test.ts
 
+# Lint code
+npm run lint
+
+# Lint with auto-fix
+npm run lint:fix
+
+# Check formatting
+npm run format:check
+
+# Format code
+npm run format
+
+# Type checking
+npm run type-check
+
+# Full CI check (lint + type-check + build + test)
+npm run ci
+
 # Docker deployment
-docker-compose up -d
+docker-compose up-d
 ```
+
+## Automated Testing and Linting
+
+This repository uses **Claude Code hooks** to automatically run tests and linting after code changes. The hooks are configured in `.claude/settings.json` and execute automatically when Claude edits TypeScript files.
+
+### How It Works
+
+When Claude Code edits a file in `src/` or `tests/`, two hooks automatically run:
+
+1. **ESLint** (synchronous) - Runs `eslint --fix` on the changed file
+2. **Tests** (asynchronous) - Runs full test suite via `npm test`
+
+This ensures code quality is maintained and tests stay green without manual intervention.
+
+### Hook Configuration
+
+The hooks are defined in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-lint.sh",
+            "statusMessage": "Running ESLint...",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
+            "async": true,
+            "statusMessage": "Running tests...",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Hook Scripts
+
+- `.claude/hooks/run-lint.sh` - Runs ESLint with auto-fix on TypeScript files
+- `.claude/hooks/run-tests.sh` - Runs the full test suite
+
+Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directories to avoid unnecessary overhead.
+
+### Important Notes
+
+- Hooks report failures but **do not block** commits - Claude sees the error output and should fix issues before committing
+- Tests run asynchronously to avoid blocking Claude's workflow
+- Linting runs synchronously with auto-fix enabled for immediate feedback
+- Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
 
 ## Architecture
 
