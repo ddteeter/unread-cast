@@ -36,7 +36,7 @@ export interface Category {
 export interface UsageLog {
   id: string;
   entry_id: string | null;
-  service: 'openai_chat' | 'openai_tts' | 'anthropic';
+  service: 'openai_chat' | 'openai_tts' | 'anthropic_chat';
   model: string;
   input_units: number;
   output_units: number | null;
