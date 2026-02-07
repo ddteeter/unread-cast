@@ -3,15 +3,15 @@ import { z } from 'zod';
 
 const configSchema = z.object({
   // Required
-  apiKey: z.string().min(1),
-  baseUrl: z.string().url(),
-  openaiApiKey: z.string().min(1),
-  r2AccountId: z.string().min(1),
-  r2AccessKeyId: z.string().min(1),
-  r2SecretAccessKey: z.string().min(1),
-  r2BucketName: z.string().min(1),
-  r2PublicUrl: z.string().url(),
-  monthlyBudgetUsd: z.number().positive(),
+  apiKey: z.string().min(1, 'API_KEY environment variable is required'),
+  baseUrl: z.string().url('BASE_URL must be a valid URL'),
+  openaiApiKey: z.string().min(1, 'OPENAI_API_KEY environment variable is required'),
+  r2AccountId: z.string().min(1, 'R2_ACCOUNT_ID environment variable is required'),
+  r2AccessKeyId: z.string().min(1, 'R2_ACCESS_KEY_ID environment variable is required'),
+  r2SecretAccessKey: z.string().min(1, 'R2_SECRET_ACCESS_KEY environment variable is required'),
+  r2BucketName: z.string().min(1, 'R2_BUCKET_NAME environment variable is required'),
+  r2PublicUrl: z.string().url('R2_PUBLIC_URL must be a valid URL'),
+  monthlyBudgetUsd: z.number().positive('MONTHLY_BUDGET_USD must be a positive number'),
 
   // Optional with defaults
   port: z.number().default(8080),
@@ -86,7 +86,20 @@ function parseEnv(): Config {
       : undefined,
   };
 
-  return configSchema.parse(raw);
+  try {
+    return configSchema.parse(raw);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map((err) => {
+        const path = err.path.join('.');
+        return `  - ${path}: ${err.message}`;
+      });
+      throw new Error(
+        `Configuration validation failed:\n${messages.join('\n')}\n\nPlease check your environment variables and .env file.`
+      );
+    }
+    throw error;
+  }
 }
 
 export const config = parseEnv();

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { APIError, RateLimitError } from 'openai/error';
+import { APIError, RateLimitError } from 'openai/error.mjs';
 import type { Transcript, TranscriptSegment } from '../types/index.js';
 
 export interface LLMUsage {

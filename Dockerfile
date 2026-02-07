@@ -1,8 +1,8 @@
 # Base image
 FROM node:24-alpine
 
-# Install ffmpeg for audio processing
-RUN apk add --no-cache ffmpeg
+# Install ffmpeg for audio processing and wget for healthcheck
+RUN apk add --no-cache ffmpeg wget
 
 # Create app directory
 WORKDIR /app
@@ -40,7 +40,7 @@ EXPOSE 8080
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Start the application
 CMD ["node", "dist/index.js"]

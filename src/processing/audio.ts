@@ -40,6 +40,7 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
 
     // Create a stream for ffmpeg output
     const outputStream = new PassThrough();
+    let ffmpegError: Error | null = null;
 
     // Start merge and stream directly to R2
     const ffmpegPromise = new Promise<void>((resolve, reject) => {
@@ -49,30 +50,55 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
         .audioCodec('copy') // No re-encoding needed, just concatenate
         .format('aac')
         .on('end', () => resolve())
-        .on('error', (err) => reject(err))
+        .on('error', (err) => {
+          ffmpegError = err;
+          outputStream.destroy(err);
+          reject(err);
+        })
         .pipe(outputStream, { end: true });
     });
 
     // Upload stream to R2 while ffmpeg is processing
     const uploadPromise = r2Service.uploadStream(audioKey, outputStream, 'audio/aac');
 
-    // Wait for both to complete
-    await Promise.all([ffmpegPromise, uploadPromise]);
-    const { url, size } = await uploadPromise;
-
-    // Cleanup concat file
     try {
-      unlinkSync(concatFilePath);
-    } catch {
-      // Ignore cleanup errors
-    }
+      // Wait for both to complete
+      await Promise.all([ffmpegPromise, uploadPromise]);
+      const { url, size } = await uploadPromise;
 
-    return {
-      audioKey,
-      audioUrl: url,
-      audioDuration: Math.round(totalDuration),
-      audioSize: size,
-    };
+      // Cleanup concat file
+      try {
+        unlinkSync(concatFilePath);
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      return {
+        audioKey,
+        audioUrl: url,
+        audioDuration: Math.round(totalDuration),
+        audioSize: size,
+      };
+    } catch (error) {
+      // If ffmpeg failed, attempt to clean up partial upload from R2
+      if (ffmpegError) {
+        try {
+          await r2Service.delete(audioKey);
+        } catch {
+          // Ignore cleanup errors - the partial upload may not exist
+        }
+      }
+
+      // Cleanup concat file
+      try {
+        unlinkSync(concatFilePath);
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      // Re-throw the original error
+      throw error;
+    }
   }
 
   function cleanupSegments(segmentFiles: string[]): void {

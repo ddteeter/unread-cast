@@ -54,6 +54,8 @@ export function initializeSchema(db: Database.Database): void {
       locked_by TEXT
     );
 
+    INSERT OR IGNORE INTO processing_lock (id) VALUES (1);
+
     CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
     CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category);
     CREATE INDEX IF NOT EXISTS idx_episodes_category ON episodes(category);

@@ -66,7 +66,7 @@ export function createBudgetService(
       }
     }
 
-    if (service === 'anthropic') {
+    if (service === 'anthropic_chat') {
       const modelConfig = config.anthropic?.[model];
       if (!modelConfig) {
         const err = new Error(`PRICING_CONFIG_MISSING: Model ${model} not found in pricing config`);

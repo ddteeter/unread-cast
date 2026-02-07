@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
+import { PassThrough } from 'stream';
 import type { Readable } from 'stream';
 
 export interface R2Config {
@@ -77,17 +78,21 @@ export function createR2Service(config: R2Config): R2Service {
   ): Promise<{ url: string; size: number }> {
     let totalSize = 0;
 
-    // Track size as data flows through
-    stream.on('data', (chunk: Buffer) => {
+    // Create a PassThrough stream to reliably track size
+    const sizeTracker = new PassThrough();
+    sizeTracker.on('data', (chunk: Buffer) => {
       totalSize += chunk.length;
     });
+
+    // Pipe input stream through size tracker
+    stream.pipe(sizeTracker);
 
     const upload = new Upload({
       client,
       params: {
         Bucket: config.bucketName,
         Key: key,
-        Body: stream,
+        Body: sizeTracker,
         ContentType: contentType,
       },
     });
