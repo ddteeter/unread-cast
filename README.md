@@ -65,8 +65,10 @@ docker-compose up -d
 
 See `.env` file for all configuration options. Key settings:
 
-- `LLM_PROVIDER`: Choose between `openai` (default) or `anthropic`
-- `LLM_MODEL`: Model to use (default: `gpt-4o`)
+- `LLM_PROVIDER`: Choose between `anthropic` (default) or `openai`
+- `LLM_MODEL`: Model to use (default: `claude-sonnet-4-5-20250929`)
+  - **Anthropic models**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (recommended)
+  - **OpenAI models**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
 - `MONTHLY_BUDGET_USD`: Monthly spending limit in USD
 - `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json`)
 

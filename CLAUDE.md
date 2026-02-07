@@ -83,7 +83,8 @@ All config via environment variables, validated with Zod schema in `src/config.t
 
 **Required:**
 - `API_KEY` - Authentication for API endpoints
-- `OPENAI_API_KEY` - For LLM and TTS
+- `ANTHROPIC_API_KEY` - For LLM (default provider)
+- `OPENAI_API_KEY` - For TTS (always required, even when using Anthropic for LLM)
 - `R2_*` credentials - Cloudflare R2 for audio storage
 - `MONTHLY_BUDGET_USD` - Cost protection limit
 
@@ -94,7 +95,10 @@ All config via environment variables, validated with Zod schema in `src/config.t
 - Update regularly as API prices change
 
 **Optional:**
-- `ANTHROPIC_API_KEY` + `LLM_PROVIDER=anthropic` - Use Claude instead of GPT
+- `LLM_PROVIDER` - Choose `anthropic` (default) or `openai`
+- `LLM_MODEL` - Specific model to use (default: `claude-sonnet-4-5-20250929`)
+  - **Anthropic**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (default)
+  - **OpenAI**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
 - `PUSHOVER_*` - Notifications for budget/failures
 - `CRON_SCHEDULE` - Default: `0 */6 * * *` (every 6 hours)
 

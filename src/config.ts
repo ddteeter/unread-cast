@@ -17,8 +17,8 @@ const configSchema = z.object({
   port: z.number().default(8080),
   cronSchedule: z.string().default('0 */6 * * *'),
   anthropicApiKey: z.string().optional(),
-  llmProvider: z.enum(['openai', 'anthropic']).default('openai'),
-  llmModel: z.string().default('gpt-4o'),
+  llmProvider: z.enum(['openai', 'anthropic']).default('anthropic'),
+  llmModel: z.string().default('claude-sonnet-4-5-20250929'),
   ttsVoices: z.array(z.string()).default([
     'alloy', 'ash', 'ballad', 'coral', 'echo',
     'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'
