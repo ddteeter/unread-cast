@@ -47,9 +47,7 @@ export function createTranscriber(
     throw new Error('No LLM service configured');
   }
 
-  async function extractContentWithLLM(
-    html: string
-  ): Promise<{
+  async function extractContentWithLLM(html: string): Promise<{
     content: string;
     usage: LLMUsage;
     provider: 'openai' | 'anthropic';
