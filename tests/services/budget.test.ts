@@ -255,6 +255,12 @@ describe('budget service', () => {
       50
     );
 
+    // Create entries in database (required for foreign key constraint)
+    const now = new Date().toISOString();
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-1', 'https://example.com/1', 'pending', now);
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-2', 'https://example.com/2', 'pending', now);
+    db.prepare('INSERT INTO entries (id, url, status, created_at) VALUES (?, ?, ?, ?)').run('entry-3', 'https://example.com/3', 'pending', now);
+
     // Log multiple usage entries
     await service.logUsage({
       entry_id: 'entry-1',

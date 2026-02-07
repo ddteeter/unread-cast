@@ -90,7 +90,7 @@ function parseEnv(): Config {
     return configSchema.parse(raw);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map((err) => {
+      const messages = error.issues.map((err) => {
         const path = err.path.join('.');
         return `  - ${path}: ${err.message}`;
       });

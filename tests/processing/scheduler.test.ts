@@ -21,9 +21,7 @@ describe('scheduler', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     initializeSchema(db);
-
-    // Initialize processing_lock table with a row
-    db.prepare('INSERT INTO processing_lock (id) VALUES (1)').run();
+    // Note: processing_lock is automatically initialized by schema
   });
 
   afterEach(() => {
