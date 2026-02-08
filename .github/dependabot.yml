@@ -15,16 +15,12 @@ updates:
       aws-sdk:
         patterns:
           - '@aws-sdk/*'
-      # Group TypeScript ESLint packages together
-      typescript-eslint:
-        patterns:
-          - '@typescript-eslint/*'
-      # Group ESLint-related packages
+      # Group all ESLint-related packages together (including TypeScript ESLint)
+      # This prevents peer dependency conflicts between eslint and @typescript-eslint/*
       eslint:
         patterns:
           - 'eslint'
           - 'eslint-*'
-        exclude-patterns:
           - '@typescript-eslint/*'
 
   # Maintain dependencies for GitHub Actions
