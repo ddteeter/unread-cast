@@ -1,0 +1,30 @@
+services:
+  unread-cast:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unread-cast
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Override defaults if needed
+      - PORT=8080
+      - DATA_DIR=/data
+      - PRICING_CONFIG_PATH=/app/pricing.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

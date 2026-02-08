@@ -1,0 +1,122 @@
+// src/api/routes.ts
+import type { FastifyInstance } from 'fastify';
+import type Database from 'better-sqlite3';
+import { createAuthHook, isPublicPath } from './middleware.js';
+import { createEntryHandlers, type CreateEntryInput } from './entries.js';
+import { createFeedHandlers, type FeedConfig } from './feeds.js';
+import type { BudgetService } from '../services/budget.js';
+
+export interface RouteConfig {
+  apiKey: string;
+  feedConfig: FeedConfig;
+  triggerProcessing?: () => Promise<void>;
+  maxRetries: number;
+}
+
+export function registerRoutes(
+  app: FastifyInstance,
+  db: Database.Database,
+  budgetService: BudgetService,
+  config: RouteConfig
+): void {
+  const entryHandlers = createEntryHandlers(db);
+  const feedHandlers = createFeedHandlers(db, config.feedConfig);
+  const authHook = createAuthHook(config.apiKey);
+
+  // Apply auth to non-public routes
+  app.addHook('preHandler', (request, reply, done) => {
+    if (isPublicPath(request.url)) {
+      done();
+      return;
+    }
+    authHook(request, reply, done);
+  });
+
+  // Health check
+  app.get('/health', () => {
+    return {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+    };
+  });
+
+  // Budget endpoint
+  app.get('/budget', async () => {
+    return budgetService.getStatus();
+  });
+
+  // Create entry
+  app.post<{ Body: CreateEntryInput }>('/entries', async (request, reply) => {
+    try {
+      const entry = await entryHandlers.createEntry(request.body);
+      return reply.status(201).send(entry);
+    } catch (error) {
+      const err = error as Error & { code?: string };
+      if (err.code === 'INVALID_URL') {
+        return reply
+          .status(400)
+          .send({ error: 'Bad Request', message: err.message, code: 'INVALID_URL' });
+      }
+      if (err.code === 'DUPLICATE_URL') {
+        return reply
+          .status(409)
+          .send({ error: 'Conflict', message: err.message, code: 'DUPLICATE_URL' });
+      }
+      throw error;
+    }
+  });
+
+  // Trigger processing
+  app.post('/process', async (request, reply) => {
+    const canProcess = await budgetService.canProcess();
+    if (!canProcess) {
+      const status = await budgetService.getStatus();
+      return reply.status(503).send({
+        error: 'Service Unavailable',
+        message:
+          status.status === 'exceeded' ? 'Budget exceeded' : 'Pricing config missing or invalid',
+        code: status.status === 'exceeded' ? 'BUDGET_EXCEEDED' : 'PRICING_CONFIG_MISSING',
+      });
+    }
+
+    // Count pending entries
+    const result = db
+      .prepare(
+        `SELECT COUNT(*) as count FROM entries
+         WHERE status = 'pending'
+         OR (status = 'failed' AND retry_count < ? AND (next_retry_at IS NULL OR next_retry_at <= ?))`
+      )
+      .get(config.maxRetries, new Date().toISOString()) as { count: number };
+
+    // Trigger processing if configured
+    if (config.triggerProcessing) {
+      // Don't await - let it run in background
+      void config.triggerProcessing().catch((err: unknown) => {
+        console.error('Processing job failed:', err);
+      });
+    }
+
+    return reply.status(202).send({
+      message: 'Processing started',
+      pendingCount: result.count,
+    });
+  });
+
+  // List feeds
+  app.get('/feeds', async () => {
+    const feeds = await feedHandlers.listFeeds();
+    return { feeds };
+  });
+
+  // Get feed XML
+  app.get<{ Params: { feedId: string } }>('/feed/:feedId.xml', async (request, reply) => {
+    try {
+      const xml = await feedHandlers.getFeedXml(request.params.feedId);
+      return reply.header('Content-Type', 'application/rss+xml').send(xml);
+    } catch (error) {
+      return reply
+        .status(404)
+        .send({ error: 'Not Found', message: 'Feed not found', code: 'NOT_FOUND' });
+    }
+  });
+}

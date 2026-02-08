@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-lint.sh",
+            "statusMessage": "Running Prettier + ESLint...",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
+            "async": true,
+            "statusMessage": "Running tests...",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}
