@@ -14,9 +14,7 @@ function loadSql(filename: string): string {
   if (existsSync(pathToMigrations)) {
     return readFileSync(pathToMigrations, 'utf-8');
   } else {
-    throw new Error(
-      `Migration file not found: ${filename}\nTried: ${pathToMigrations}`
-    );
+    throw new Error(`Migration file not found: ${filename}\nTried: ${pathToMigrations}`);
   }
 }
 
