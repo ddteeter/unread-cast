@@ -49,6 +49,9 @@ const configSchema = z.object({
   // Token limits for LLM API calls
   maxTranscriptTokens: z.number().default(16000), // ~hour of podcast content
   maxExtractionTokens: z.number().default(8000), // long articles
+
+  // Processing retry configuration
+  maxRetries: z.number().default(5),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -95,6 +98,7 @@ function parseEnv(): Config {
     maxExtractionTokens: process.env.MAX_EXTRACTION_TOKENS
       ? parseInt(process.env.MAX_EXTRACTION_TOKENS, 10)
       : undefined,
+    maxRetries: process.env.MAX_RETRIES ? parseInt(process.env.MAX_RETRIES, 10) : undefined,
   };
 
   try {

@@ -96,7 +96,7 @@ async function main() {
     audioMerger,
     {
       minContentLength: config.minContentLength,
-      maxRetries: 5,
+      maxRetries: config.maxRetries,
     }
   );
 
@@ -114,6 +114,7 @@ async function main() {
       tempDir,
       retentionDays: config.retentionDays,
       budgetWarningPercent: config.budgetWarningPercent,
+      maxRetries: config.maxRetries,
     }
   );
 
@@ -133,6 +134,7 @@ async function main() {
       r2PublicUrl: config.r2PublicUrl,
     },
     triggerProcessing: scheduler.runProcessingJob,
+    maxRetries: config.maxRetries,
   });
 
   // Graceful shutdown handler

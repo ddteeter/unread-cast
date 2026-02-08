@@ -16,6 +16,7 @@ export interface SchedulerConfig {
   tempDir: string;
   retentionDays: number;
   budgetWarningPercent: number;
+  maxRetries: number;
 }
 
 export interface SchedulerDependencies {
@@ -113,10 +114,10 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
         .prepare(
           `SELECT * FROM entries
          WHERE status = 'pending'
-         OR (status = 'failed' AND retry_count < 5 AND (next_retry_at IS NULL OR next_retry_at <= ?))
+         OR (status = 'failed' AND retry_count < ? AND (next_retry_at IS NULL OR next_retry_at <= ?))
          ORDER BY created_at ASC`
         )
-        .all(now) as Record<string, unknown>[];
+        .all(config.maxRetries, now) as Record<string, unknown>[];
 
       console.log(`Found ${entries.length} entries to process`);
 

@@ -50,6 +50,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -93,6 +94,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -135,6 +137,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -184,6 +187,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -234,6 +238,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -293,6 +298,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -352,6 +358,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -402,6 +409,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -481,6 +489,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -529,6 +538,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -609,6 +619,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -649,6 +660,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -689,6 +701,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -723,6 +736,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -764,6 +778,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -804,6 +819,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -867,6 +883,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -919,6 +936,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -965,6 +983,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 
@@ -998,6 +1017,7 @@ describe('scheduler', () => {
           tempDir: '/tmp',
           retentionDays: 90,
           budgetWarningPercent: 80,
+          maxRetries: 5,
         }
       );
 

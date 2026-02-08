@@ -10,6 +10,7 @@ export interface RouteConfig {
   apiKey: string;
   feedConfig: FeedConfig;
   triggerProcessing?: () => Promise<void>;
+  maxRetries: number;
 }
 
 export function registerRoutes(
@@ -83,9 +84,9 @@ export function registerRoutes(
       .prepare(
         `SELECT COUNT(*) as count FROM entries
          WHERE status = 'pending'
-         OR (status = 'failed' AND retry_count < 5 AND (next_retry_at IS NULL OR next_retry_at <= ?))`
+         OR (status = 'failed' AND retry_count < ? AND (next_retry_at IS NULL OR next_retry_at <= ?))`
       )
-      .get(new Date().toISOString()) as { count: number };
+      .get(config.maxRetries, new Date().toISOString()) as { count: number };
 
     // Trigger processing if configured
     if (config.triggerProcessing) {
