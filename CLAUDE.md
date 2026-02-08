@@ -153,6 +153,37 @@ SQLite at `/data/unread-cast.db` with these core tables:
 - `usage_log` - Cost tracking for budget enforcement
 - `processing_lock` - Single-row table preventing concurrent processing
 
+### Database Migrations
+
+Uses `@blackglory/better-sqlite3-migrations` library for schema versioning:
+
+- Migration definitions in `src/db/migrations.ts`
+- SQL files in `/migrations/` directory (loaded by migrations.ts)
+- Automatic execution on startup via `migrate()` function
+- Version tracked via SQLite's `user_version` pragma
+- Rollback support via `down` migrations
+
+**Creating migrations:**
+1. Create SQL file: `migrations/002-description.sql`
+2. Add entry to `src/db/migrations.ts`:
+   ```typescript
+   {
+     version: 2,
+     up: loadSql('002-description.sql'),
+     down: 'DROP TABLE new_table;', // or use loadSql for complex rollbacks
+   }
+   ```
+3. Test locally: `npm run dev`
+4. Commit both files together
+
+**Rollback (emergency use):**
+Modify `src/db/client.ts` temporarily:
+```typescript
+migrate(db, migrations, targetVersion); // e.g., targetVersion = 1
+```
+
+See `docs/migrations.md` for detailed migration guide.
+
 ### Configuration
 
 All config via environment variables, validated with Zod schema in `src/config.ts`:

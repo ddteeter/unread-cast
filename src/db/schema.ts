@@ -1,5 +1,10 @@
 import type Database from 'better-sqlite3';
 
+/**
+ * @deprecated This schema initialization has been replaced by the migration system.
+ * See src/db/migrations.ts and migrations/001-initial-schema.sql
+ * This file is kept for reference only.
+ */
 export function initializeSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS entries (

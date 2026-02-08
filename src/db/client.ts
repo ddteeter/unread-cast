@@ -1,14 +1,20 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { initializeSchema } from './schema.js';
+import { migrate } from '@blackglory/better-sqlite3-migrations';
+import { migrations } from './migrations.js';
 
 export function createDatabase(dbPath: string): Database.Database {
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  initializeSchema(db);
+  // Run migrations (replaces initializeSchema)
+  console.log('Running database migrations...');
+  migrate(db, migrations);
+  const currentVersion = db.pragma('user_version', { simple: true }) as number;
+  console.log(`Database migrations complete (version ${currentVersion})`);
 
+  // Post-migration data seeding
   // Ensure default category exists
   const defaultCategory = db.prepare('SELECT * FROM categories WHERE name = ?').get('default');
 
