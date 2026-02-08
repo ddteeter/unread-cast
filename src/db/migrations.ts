@@ -7,18 +7,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Helper to load SQL files
 function loadSql(filename: string): string {
-  // When running from TypeScript (src/db/migrations.ts): go up 2 levels to project root
-  // When running from compiled JS (dist/src/db/migrations.js): go up 3 levels to project root
-  const pathFromSrc = join(__dirname, '../../migrations', filename);
-  const pathFromDist = join(__dirname, '../../../migrations', filename);
+  // When running from TypeScript (src/db/migrations.ts) or compiled JS (dist/db/migrations.js):
+  // Both need to go up 2 levels to reach project root where migrations/ directory lives
+  const pathToMigrations = join(__dirname, '../../migrations', filename);
 
-  if (existsSync(pathFromSrc)) {
-    return readFileSync(pathFromSrc, 'utf-8');
-  } else if (existsSync(pathFromDist)) {
-    return readFileSync(pathFromDist, 'utf-8');
+  if (existsSync(pathToMigrations)) {
+    return readFileSync(pathToMigrations, 'utf-8');
   } else {
     throw new Error(
-      `Migration file not found: ${filename}\nTried:\n- ${pathFromSrc}\n- ${pathFromDist}`
+      `Migration file not found: ${filename}\nTried: ${pathToMigrations}`
     );
   }
 }

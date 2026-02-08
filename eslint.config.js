@@ -13,7 +13,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: './tsconfig.eslint.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -66,6 +66,7 @@ export default tseslint.config(
       '*.config.js',
       '*.config.mjs',
       '*.config.ts',
+      '!tsconfig.eslint.json', // Include this for ESLint reference
       'scripts/',
     ],
   }
