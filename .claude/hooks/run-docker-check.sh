@@ -12,9 +12,9 @@ fi
 
 echo "🐳 Validating Docker build context for $FILE_PATH..."
 
-# Test Docker build up to the npm ci stage to verify package-lock.json is available
-# Use --target to stop at the builder stage (which runs npm ci)
-if docker build --target builder --quiet -f Dockerfile . > /dev/null 2>&1; then
+# Run full Docker build to validate entire build context and all stages
+# This catches issues with excluded files (package-lock.json, migrations/, pricing.json, etc.)
+if docker build --quiet -f Dockerfile . > /dev/null 2>&1; then
   echo "✓ Docker build context validation passed"
   exit 0
 else
