@@ -63,7 +63,7 @@ This repository uses **Claude Code hooks** to automatically run tests and lintin
 
 When Claude Code edits a file in `src/` or `tests/`, two hooks automatically run:
 
-1. **ESLint** (synchronous) - Runs `eslint --fix` on the changed file
+1. **Prettier + ESLint** (synchronous) - Runs `prettier --write` and `eslint --fix` on the changed file
 2. **Tests** (asynchronous) - Runs full test suite via `npm test`
 
 This ensures code quality is maintained and tests stay green without manual intervention.
@@ -82,7 +82,7 @@ The hooks are defined in `.claude/settings.json`:
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-lint.sh",
-            "statusMessage": "Running ESLint...",
+            "statusMessage": "Running Prettier + ESLint...",
             "timeout": 30
           },
           {
@@ -101,7 +101,7 @@ The hooks are defined in `.claude/settings.json`:
 
 ### Hook Scripts
 
-- `.claude/hooks/run-lint.sh` - Runs ESLint with auto-fix on TypeScript files
+- `.claude/hooks/run-lint.sh` - Runs Prettier and ESLint with auto-fix on TypeScript files
 - `.claude/hooks/run-tests.sh` - Runs the full test suite
 
 Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directories to avoid unnecessary overhead.
@@ -110,7 +110,7 @@ Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directorie
 
 - Hooks report failures but **do not block** commits - Claude sees the error output and should fix issues before committing
 - Tests run asynchronously to avoid blocking Claude's workflow
-- Linting runs synchronously with auto-fix enabled for immediate feedback
+- Formatting and linting run synchronously with auto-fix enabled for immediate feedback
 - Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
 
 ## Architecture

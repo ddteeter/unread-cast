@@ -26,7 +26,6 @@ export interface OpenAIService {
   ): Promise<{ audio: Buffer; usage: TTSUsage }>;
 }
 
-
 export function createOpenAIService(
   apiKey: string,
   maxTranscriptTokens: number = 16000,

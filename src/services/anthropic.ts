@@ -17,7 +17,6 @@ export interface AnthropicService {
   extractContent(html: string, model: string): Promise<{ content: string; usage: LLMUsage }>;
 }
 
-
 export function createAnthropicService(
   apiKey: string,
   maxTranscriptTokens: number = 16000,

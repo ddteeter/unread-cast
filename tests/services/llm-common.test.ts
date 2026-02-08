@@ -35,7 +35,9 @@ describe('parseAndValidateTranscript', () => {
   it('should throw on invalid JSON', () => {
     const invalidJson = 'not valid json';
 
-    expect(() => parseAndValidateTranscript(invalidJson)).toThrow('Failed to parse transcript JSON');
+    expect(() => parseAndValidateTranscript(invalidJson)).toThrow(
+      'Failed to parse transcript JSON'
+    );
   });
 
   it('should throw on missing speaker field', () => {

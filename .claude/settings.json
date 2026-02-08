@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-lint.sh",
-            "statusMessage": "Running ESLint...",
+            "statusMessage": "Running Prettier + ESLint...",
             "timeout": 30
           },
           {
