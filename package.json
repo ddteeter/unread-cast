@@ -47,7 +47,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/jsdom": "^27.0.0",
-    "@types/node": "^25.2.0",
+    "@types/node": "^25.2.2",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
