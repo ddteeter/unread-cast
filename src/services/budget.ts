@@ -43,9 +43,7 @@ export function createBudgetService(
       }
     }
 
-    const err = new Error(
-      `Failed to load pricing config from any of: ${pathsToTry.join(', ')}`
-    );
+    const err = new Error(`Failed to load pricing config from any of: ${pathsToTry.join(', ')}`);
     (err as Error & { code: string }).code = 'PRICING_CONFIG_MISSING';
     throw err;
   }
