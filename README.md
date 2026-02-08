@@ -63,12 +63,14 @@ The Docker image includes a bundled pricing.json with current API rates, so no m
 docker-compose up -d
 ```
 
-To override with custom pricing, mount your own file:
-```yaml
-volumes:
-  - ./data:/data
-  - ./my-custom-pricing.json:/app/pricing.json
+To override with custom pricing, simply add `pricing.json` to your mounted data directory:
+```bash
+cp data/pricing.json.example data/pricing.json
+# Edit data/pricing.json with your custom rates
+docker-compose up -d
 ```
+
+The application automatically checks `/data/pricing.json` first, then falls back to the bundled `/app/pricing.json`.
 
 ## Configuration
 
@@ -79,7 +81,7 @@ See `.env` file for all configuration options. Key settings:
   - **Anthropic models**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (recommended)
   - **OpenAI models**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
 - `MONTHLY_BUDGET_USD`: Monthly spending limit in USD
-- `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json` for local dev, `/app/pricing.json` for Docker)
+- `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json` with fallback to `/app/pricing.json`)
 
 ## API Pricing
 

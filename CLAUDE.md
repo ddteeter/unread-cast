@@ -198,10 +198,11 @@ All config via environment variables, validated with Zod schema in `src/config.t
 **Critical: Pricing Config**
 - Pricing configuration REQUIRED for cost calculation
 - Contains per-million pricing for OpenAI/Anthropic models
-- Docker deployments: bundled at `/app/pricing.json` with current rates
-- Local development: copy `data/pricing.json.example` to `data/pricing.json`
+- **Fallback behavior**: Checks `/data/pricing.json` first, falls back to `/app/pricing.json` if not found
+- Docker deployments: bundled at `/app/pricing.json` with current rates; override by adding `pricing.json` to mounted `/data` volume
+- Local development: copy `data/pricing.json.example` to `data/pricing.json` and set `PRICING_CONFIG_PATH=data/pricing.json` in `.env`
 - See `data/pricing.json.example` for format
-- Update regularly as API prices change (rebuild Docker image or mount custom file)
+- Update regularly as API prices change (rebuild Docker image or add custom file to data directory)
 
 **Optional:**
 - `LLM_PROVIDER` - Choose `anthropic` (default) or `openai`
@@ -256,7 +257,7 @@ Dynamic XML generation in `src/api/feeds.ts`:
 ## Important Constraints
 
 1. **Budget enforcement is critical** - Never bypass budget checks or allow processing when `canProcess()` returns false
-2. **Pricing config must exist** - Application won't start without valid pricing configuration (bundled in Docker, or `data/pricing.json` for local dev)
+2. **Pricing config must exist** - Application checks `/data/pricing.json` first, then falls back to bundled `/app/pricing.json`; at least one must exist
 3. **Single instance processing** - `processing_lock` table prevents concurrent runs; scheduler respects this
 4. **Audio segment cleanup** - Only delete temp files on success; keep on failure for retry
 5. **Database is single file** - All data in one SQLite file; backup by copying `/data/unread-cast.db`

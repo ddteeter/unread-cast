@@ -1,5 +1,5 @@
 // src/services/budget.ts
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3';
 import type { BudgetStatus, PricingConfig, UsageLog } from '../types/index.js';
@@ -22,15 +22,32 @@ export function createBudgetService(
 
   function loadPricingConfig(): PricingConfig {
     if (pricingConfig) return pricingConfig;
-    try {
-      const content = readFileSync(pricingConfigPath, 'utf-8');
-      pricingConfig = JSON.parse(content) as PricingConfig;
-      return pricingConfig;
-    } catch (_error) {
-      const err = new Error('Failed to load pricing config');
-      (err as Error & { code: string }).code = 'PRICING_CONFIG_MISSING';
-      throw err;
+
+    // Try primary path first (user override), then fall back to bundled default
+    const pathsToTry = [pricingConfigPath];
+    if (pricingConfigPath !== '/app/pricing.json') {
+      pathsToTry.push('/app/pricing.json');
     }
+
+    for (const path of pathsToTry) {
+      if (existsSync(path)) {
+        try {
+          const content = readFileSync(path, 'utf-8');
+          pricingConfig = JSON.parse(content) as PricingConfig;
+          console.log(`Loaded pricing config from ${path}`);
+          return pricingConfig;
+        } catch (error) {
+          console.warn(`Failed to parse pricing config at ${path}:`, error);
+          // Continue to next path
+        }
+      }
+    }
+
+    const err = new Error(
+      `Failed to load pricing config from any of: ${pathsToTry.join(', ')}`
+    );
+    (err as Error & { code: string }).code = 'PRICING_CONFIG_MISSING';
+    throw err;
   }
 
   function calculateCost(
