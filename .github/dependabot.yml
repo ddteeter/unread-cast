@@ -10,6 +10,22 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - 'dependencies'
+    groups:
+      # Group AWS SDK packages together (they have strict peer dependencies)
+      aws-sdk:
+        patterns:
+          - '@aws-sdk/*'
+      # Group TypeScript ESLint packages together
+      typescript-eslint:
+        patterns:
+          - '@typescript-eslint/*'
+      # Group ESLint-related packages
+      eslint:
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+        exclude-patterns:
+          - '@typescript-eslint/*'
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: 'github-actions'
