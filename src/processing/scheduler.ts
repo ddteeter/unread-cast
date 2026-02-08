@@ -202,7 +202,7 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
           console.log(`Deleted orphaned temp file: ${file}`);
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore if temp dir doesn't exist
     }
   }

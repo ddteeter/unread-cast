@@ -113,7 +113,7 @@ export function registerRoutes(
     try {
       const xml = await feedHandlers.getFeedXml(request.params.feedId);
       return reply.header('Content-Type', 'application/rss+xml').send(xml);
-    } catch (error) {
+    } catch (_error) {
       return reply
         .status(404)
         .send({ error: 'Not Found', message: 'Feed not found', code: 'NOT_FOUND' });

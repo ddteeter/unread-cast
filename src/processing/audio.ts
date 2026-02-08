@@ -29,7 +29,7 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
     for (const segmentFile of segmentFiles) {
       const segmentDuration = await new Promise<number>((resolve, reject) => {
         ffmpeg.ffprobe(segmentFile, (err, metadata) => {
-          if (err) reject(err);
+          if (err) reject(err instanceof Error ? err : new Error(String(err)));
           else resolve(metadata.format.duration || 0);
         });
       });
