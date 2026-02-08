@@ -37,8 +37,14 @@ export function createBudgetService(
           console.log(`Loaded pricing config from ${path}`);
           return pricingConfig;
         } catch (error) {
+          // If this is the primary user-specified path, fail immediately
+          // Only fall back for bundled defaults
+          if (path === pricingConfigPath) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to parse pricing config at ${path}: ${errorMsg}`);
+          }
           console.warn(`Failed to parse pricing config at ${path}:`, error);
-          // Continue to next path
+          // Continue to next path only for fallback paths
         }
       }
     }
