@@ -105,7 +105,7 @@ export function createProcessingPipeline(
         if (content.length < config.minContentLength) {
           useLLMFallback = true;
         }
-      } catch (error) {
+      } catch (_error) {
         // Readability failed - fall back to LLM
         useLLMFallback = true;
       }

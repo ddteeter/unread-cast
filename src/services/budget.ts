@@ -26,7 +26,7 @@ export function createBudgetService(
       const content = readFileSync(pricingConfigPath, 'utf-8');
       pricingConfig = JSON.parse(content) as PricingConfig;
       return pricingConfig;
-    } catch (error) {
+    } catch (_error) {
       const err = new Error('Failed to load pricing config');
       (err as Error & { code: string }).code = 'PRICING_CONFIG_MISSING';
       throw err;
