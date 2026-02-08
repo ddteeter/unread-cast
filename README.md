@@ -49,6 +49,8 @@ npm start
 npm run dev
 ```
 
+**Note**: Pre-commit hooks automatically run prettier and eslint on staged files. This ensures code quality and prevents CI failures. No manual setup required - hooks install automatically with `npm install`.
+
 ## Testing
 
 ```bash

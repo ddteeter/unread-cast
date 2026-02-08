@@ -113,6 +113,42 @@ Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directorie
 - Formatting and linting run synchronously with auto-fix enabled for immediate feedback
 - Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
 
+## Git Pre-commit Hooks (Husky + Lint-staged)
+
+In addition to Claude Code hooks, the repository uses **husky** and **lint-staged** to enforce code quality at commit time.
+
+### How It Works
+
+When anyone (Claude or human) attempts to commit code:
+
+1. **Pre-commit hook** automatically runs via husky
+2. **lint-staged** runs prettier and eslint only on staged files
+3. **Auto-fixes** are applied and re-staged
+4. **Commit proceeds** only if all checks pass
+
+### Setup
+
+The pre-commit hooks install automatically when running `npm install` (via the `prepare` script).
+
+No manual setup required - hooks work for all developers immediately.
+
+### Configuration
+
+Defined in `package.json`:
+
+```json
+{
+  "lint-staged": {
+    "*.{ts,js}": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  }
+}
+```
+
+This **solves the recurring issue** where Claude Code hooks run but formatting changes aren't committed, causing CI failures.
+
 ## Architecture
 
 ### Factory Pattern with Dependency Injection
