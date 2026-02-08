@@ -9,6 +9,7 @@ import { createDatabase } from './db/client.js';
 import { createBudgetService } from './services/budget.js';
 import { createPushoverService } from './services/pushover.js';
 import { createR2Service } from './services/r2.js';
+import { createFfmpegService } from './services/ffmpeg.js';
 import { createOpenAIService } from './services/openai.js';
 import { createAnthropicService } from './services/anthropic.js';
 import { registerRoutes } from './api/routes.js';
@@ -58,6 +59,8 @@ async function main() {
     publicUrl: config.r2PublicUrl,
   });
 
+  const ffmpegService = createFfmpegService();
+
   const openaiService = createOpenAIService(
     config.openaiApiKey,
     config.maxTranscriptTokens,
@@ -83,7 +86,7 @@ async function main() {
     tempDir,
   });
 
-  const audioMerger = createAudioMerger(r2Service, tempDir);
+  const audioMerger = createAudioMerger(r2Service, ffmpegService, tempDir);
 
   const pipeline = createProcessingPipeline(
     db,
