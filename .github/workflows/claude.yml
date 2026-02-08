@@ -25,9 +25,17 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
+      - name: Get PR ref
+        id: pr-ref
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+        run: |
+          PR_NUMBER=${{ github.event.issue.number }}
+          echo "ref=refs/pull/${PR_NUMBER}/head" >> $GITHUB_OUTPUT
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.pr-ref.outputs.ref || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
 
       - name: Check for package.json
