@@ -1,12 +1,12 @@
 #!/bin/bash
 # .claude/hooks/run-docker-check.sh
-# Validate Docker build context after modifying Dockerfile or .dockerignore
+# Validate Docker build context after modifying Docker-related or build-time dependency files
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
-# Only run for Docker-related files
-if [[ "$FILE_PATH" != *"Dockerfile"* && "$FILE_PATH" != *".dockerignore"* ]]; then
+# Only run for Docker-related files and build-time dependencies
+if [[ "$FILE_PATH" != *"Dockerfile"* && "$FILE_PATH" != *".dockerignore"* && "$FILE_PATH" != *"data/pricing.json.example"* ]]; then
   exit 0
 fi
 
