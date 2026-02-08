@@ -15,7 +15,6 @@ services:
       # Override defaults if needed
       - PORT=8080
       - DATA_DIR=/data
-      - PRICING_CONFIG_PATH=/app/pricing.json
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
