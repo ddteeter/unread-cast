@@ -55,18 +55,18 @@ npm run ci
 docker-compose up-d
 ```
 
-## Automated Testing and Linting
+## Automated Testing and Validation
 
-This repository uses **Claude Code hooks** to automatically run tests and linting after code changes. The hooks are configured in `.claude/settings.json` and execute automatically when Claude edits TypeScript files.
+This repository uses **Claude Code hooks** for background validation and **git pre-commit hooks** for code quality enforcement.
 
-### How It Works
+### Claude Code Hooks
 
-When Claude Code edits a file in `src/` or `tests/`, two hooks automatically run:
+When Claude Code edits a file in `src/` or `tests/`, two background hooks automatically run:
 
-1. **Prettier + ESLint** (synchronous) - Runs `prettier --write` and `eslint --fix` on the changed file
-2. **Tests** (asynchronous) - Runs full test suite via `npm test`
+1. **Tests** (asynchronous) - Runs full test suite for early failure detection
+2. **Docker validation** (asynchronous) - Validates Docker builds
 
-This ensures code quality is maintained and tests stay green without manual intervention.
+These hooks run in the background and provide early warnings without blocking Claude's workflow. Format/lint enforcement is handled by git pre-commit hooks (see below).
 
 ### Hook Configuration
 
@@ -81,16 +81,17 @@ The hooks are defined in `.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-lint.sh",
-            "statusMessage": "Running Prettier + ESLint...",
-            "timeout": 30
-          },
-          {
-            "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
             "async": true,
             "statusMessage": "Running tests...",
             "timeout": 300
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-docker-check.sh",
+            "async": true,
+            "statusMessage": "Validating Docker build...",
+            "timeout": 180
           }
         ]
       }
@@ -101,17 +102,17 @@ The hooks are defined in `.claude/settings.json`:
 
 ### Hook Scripts
 
-- `.claude/hooks/run-lint.sh` - Runs Prettier and ESLint with auto-fix on TypeScript files
 - `.claude/hooks/run-tests.sh` - Runs the full test suite
+- `.claude/hooks/run-docker-check.sh` - Validates Docker build configuration
 
 Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directories to avoid unnecessary overhead.
 
 ### Important Notes
 
-- Hooks report failures but **do not block** commits - Claude sees the error output and should fix issues before committing
-- Tests run asynchronously to avoid blocking Claude's workflow
-- Formatting and linting run synchronously with auto-fix enabled for immediate feedback
+- Hooks run **asynchronously** in the background and don't block Claude's workflow
+- They provide early warnings about test failures and Docker issues
 - Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
+- **Format/lint enforcement is handled by git pre-commit hooks** (not Claude hooks)
 
 ## Git Pre-commit Hooks (Husky + Lint-staged)
 
