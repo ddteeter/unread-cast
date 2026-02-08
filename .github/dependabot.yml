@@ -10,6 +10,12 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - 'dependencies'
+    ignore:
+      # Ignore ESLint 10 until typescript-eslint adds support
+      # typescript-eslint v8 only supports eslint ^8.57.0 || ^9.0.0
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+        versions: ['10.x']
     groups:
       # Group AWS SDK packages together (they have strict peer dependencies)
       aws-sdk:
