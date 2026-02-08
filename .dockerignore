@@ -15,6 +15,8 @@ dist
 
 # Data directory (will be mounted as volume)
 data/
+# But include pricing.json.example for bundling in the image
+!data/pricing.json.example
 
 # Git
 .git
