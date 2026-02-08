@@ -63,8 +63,7 @@ describe('processing pipeline', () => {
     const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Article content</body></html>');
     const mockExtractContent = vi.fn().mockResolvedValue({
       title: 'Test Article',
-      content:
-        'This is a long enough article content that should pass validation. '.repeat(50),
+      content: 'This is a long enough article content that should pass validation. '.repeat(50),
     });
     const mockTranscriber = {
       generateTranscript: vi.fn().mockResolvedValue({
@@ -312,8 +311,7 @@ describe('processing pipeline', () => {
     const mockFetchHtml = vi.fn().mockResolvedValue('<html><body>Article content</body></html>');
     const mockExtractContent = vi.fn().mockResolvedValue({
       title: 'Test Article',
-      content:
-        'This is a long enough article content that should pass validation. '.repeat(50),
+      content: 'This is a long enough article content that should pass validation. '.repeat(50),
     });
     const mockTranscriber = {
       generateTranscript: vi.fn().mockResolvedValue({

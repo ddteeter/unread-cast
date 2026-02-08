@@ -25,9 +25,9 @@ describe('database migrations', () => {
     const version = db.pragma('user_version', { simple: true }) as number;
     expect(version).toBe(2);
 
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[];
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string;
+    }[];
     expect(tables.map((t) => t.name)).toContain('test1');
     expect(tables.map((t) => t.name)).toContain('test2');
   });
@@ -57,9 +57,9 @@ describe('database migrations', () => {
     const version = db.pragma('user_version', { simple: true }) as number;
     expect(version).toBe(1);
 
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[];
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string;
+    }[];
     expect(tables.map((t) => t.name)).toContain('test1');
     expect(tables.map((t) => t.name)).not.toContain('test2');
   });
@@ -95,9 +95,9 @@ describe('database migrations', () => {
     const version = db.pragma('user_version', { simple: true }) as number;
     expect(version).toBe(0);
 
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[];
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string;
+    }[];
     expect(tables.map((t) => t.name)).not.toContain('test1');
   });
 
@@ -115,9 +115,9 @@ describe('database migrations', () => {
     expect(() => migrate(db, migrations)).not.toThrow();
     expect(db.pragma('user_version', { simple: true })).toBe(2);
 
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[];
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string;
+    }[];
     expect(tables.map((t) => t.name)).toContain('test1');
     expect(tables.map((t) => t.name)).toContain('test2');
   });
@@ -130,9 +130,9 @@ describe('database migrations', () => {
           // This will succeed
           db.exec('CREATE TABLE test1 (id INTEGER);');
           // Verify we can see changes within same transaction
-          const tables = db
-            .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-            .all() as { name: string }[];
+          const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+            name: string;
+          }[];
           expect(tables.map((t) => t.name)).toContain('test1');
         },
         down: 'DROP TABLE test1;',
@@ -142,9 +142,9 @@ describe('database migrations', () => {
     migrate(db, migrations);
 
     // Verify table persisted after transaction
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[];
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string;
+    }[];
     expect(tables.map((t) => t.name)).toContain('test1');
   });
 });
