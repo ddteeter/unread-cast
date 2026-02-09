@@ -6,7 +6,7 @@ INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 # Only run for Docker-related files and build-time dependencies
-if [[ "$FILE_PATH" != *"Dockerfile"* && "$FILE_PATH" != *".dockerignore"* && "$FILE_PATH" != *"data/pricing.json.example"* ]]; then
+if [[ "$FILE_PATH" != *"Dockerfile"* && "$FILE_PATH" != *".dockerignore"* && "$FILE_PATH" != *"data/pricing.json.example"* && "$FILE_PATH" != *"package.json"* && "$FILE_PATH" != *"package-lock.json"* ]]; then
   exit 0
 fi
 

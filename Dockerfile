@@ -29,8 +29,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --omit=dev
+# Install only production dependencies (skip all scripts, then rebuild native addons)
+# --ignore-scripts prevents husky from running, but we need to rebuild better-sqlite3's native addon
+RUN npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist

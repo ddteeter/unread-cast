@@ -1,9 +1,9 @@
 // src/processing/audio.ts
 import { unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import ffmpeg from 'fluent-ffmpeg';
 import { PassThrough } from 'stream';
 import type { R2Service } from '../services/r2.js';
+import type { FfmpegService } from '../services/ffmpeg.js';
 
 export interface AudioMergeResult {
   audioKey: string;
@@ -12,7 +12,11 @@ export interface AudioMergeResult {
   audioSize: number;
 }
 
-export function createAudioMerger(r2Service: R2Service, tempDir: string) {
+export function createAudioMerger(
+  r2Service: R2Service,
+  ffmpegService: FfmpegService,
+  tempDir: string
+) {
   async function mergeAndUpload(
     segmentFiles: string[],
     episodeId: string
@@ -27,12 +31,7 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
     // Calculate total duration by summing all segment durations
     let totalDuration = 0;
     for (const segmentFile of segmentFiles) {
-      const segmentDuration = await new Promise<number>((resolve, reject) => {
-        ffmpeg.ffprobe(segmentFile, (err, metadata) => {
-          if (err) reject(err instanceof Error ? err : new Error(String(err)));
-          else resolve(metadata.format.duration || 0);
-        });
-      });
+      const segmentDuration = await ffmpegService.getDuration(segmentFile);
       totalDuration += segmentDuration;
     }
 
@@ -41,20 +40,12 @@ export function createAudioMerger(r2Service: R2Service, tempDir: string) {
     let ffmpegError: Error | null = null;
 
     // Start merge and stream directly to R2
-    const ffmpegPromise = new Promise<void>((resolve, reject) => {
-      ffmpeg()
-        .input(concatFilePath)
-        .inputOptions(['-f', 'concat', '-safe', '0'])
-        .audioCodec('copy') // No re-encoding needed, just concatenate
-        .format('aac')
-        .on('end', () => resolve())
-        .on('error', (err) => {
-          ffmpegError = err;
-          outputStream.destroy(err);
-          reject(err);
-        })
-        .pipe(outputStream, { end: true });
-    });
+    const ffmpegPromise = ffmpegService
+      .concatenateToStream(concatFilePath, outputStream)
+      .catch((err: Error) => {
+        ffmpegError = err;
+        throw err;
+      });
 
     // Upload stream to R2 while ffmpeg is processing
     const uploadPromise = r2Service.uploadStream(audioKey, outputStream, 'audio/aac');

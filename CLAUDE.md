@@ -156,7 +156,7 @@ This **solves the recurring issue** where Claude Code hooks run but formatting c
 
 The entire application uses factory functions that create service objects with their dependencies injected. See `src/index.ts` for the initialization sequence:
 
-1. **Services Layer** - External integrations (OpenAI, Anthropic, R2, Pushover, Budget tracking)
+1. **Services Layer** - External integrations (OpenAI, Anthropic, R2, Pushover, Budget tracking, Ffmpeg)
 2. **Processing Layer** - Pipeline components (fetcher, extractor, transcriber, TTS, audio merger)
 3. **API Layer** - Fastify routes with authentication middleware
 4. **Scheduler** - Cron jobs for processing and cleanup
@@ -269,9 +269,9 @@ Entries that fail processing:
 
 ### Audio Processing
 
-Uses `fluent-ffmpeg` wrapper around ffmpeg binary:
+Uses custom `FfmpegService` that wraps ffmpeg/ffprobe CLI:
 - TTS generates AAC segments: `/data/temp/{entryId}_{segmentIndex}.aac`
-- Merge concatenates without re-encoding
+- Merge concatenates without re-encoding using ffmpeg concat demuxer
 - Stream uploads to R2 during merge (no final file written locally)
 - Segments deleted only on success (kept for retry on failure)
 
