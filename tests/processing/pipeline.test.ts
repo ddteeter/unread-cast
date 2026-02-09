@@ -122,6 +122,7 @@ describe('processing pipeline', () => {
       {
         minContentLength: 500,
         maxRetries: 3,
+        tempDir,
       }
     );
 

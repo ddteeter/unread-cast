@@ -66,6 +66,25 @@ export function registerRoutes(
     }
   });
 
+  // Force reprocess entry
+  app.post<{ Params: { id: string } }>('/entries/:id/reprocess', async (request, reply) => {
+    try {
+      await entryHandlers.forceReprocess(request.params.id);
+      return reply.status(200).send({
+        message: 'Entry queued for full reprocessing',
+        entry_id: request.params.id,
+      });
+    } catch (error) {
+      const err = error as Error & { code?: string };
+      if (err.code === 'NOT_FOUND') {
+        return reply
+          .status(404)
+          .send({ error: 'Not Found', message: 'Entry not found', code: 'NOT_FOUND' });
+      }
+      throw error;
+    }
+  });
+
   // Trigger processing
   app.post('/process', async (request, reply) => {
     const canProcess = await budgetService.canProcess();
