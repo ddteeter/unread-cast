@@ -113,6 +113,7 @@ Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directorie
 - They provide early warnings about test failures and Docker issues
 - Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
 - **Format/lint enforcement is handled by git pre-commit hooks** (not Claude hooks)
+- **CRITICAL**: Because hooks are async, Claude MUST explicitly run `npm test` before committing changes to verify all tests pass. Do not rely solely on background hooks - always verify test results before creating commits or PRs.
 
 ## Git Pre-commit Hooks (Husky + Lint-staged)
 
