@@ -67,6 +67,9 @@ function extractContentFromRss(rssXml: string, articleSlug: string): string {
     const guid = item.querySelector('guid')?.textContent?.trim() || '';
 
     if (link.includes(articleSlug) || guid.includes(articleSlug)) {
+      // Extract title from RSS item
+      const title = item.querySelector('title')?.textContent?.trim() || 'Medium Article';
+
       // Get all elements and find one with localName 'encoded' (works regardless of namespace prefix)
       let htmlContent = '';
 
@@ -83,10 +86,10 @@ function extractContentFromRss(rssXml: string, articleSlug: string): string {
         throw new Error(`No content found in RSS item for article: ${articleSlug}`);
       }
 
-      // Wrap for Readability compatibility
+      // Wrap for Readability compatibility with extracted title
       return `
         <html>
-          <head><title>Medium Article</title></head>
+          <head><title>${title}</title></head>
           <body>${htmlContent}</body>
         </html>
       `;
