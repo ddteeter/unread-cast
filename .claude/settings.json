@@ -6,13 +6,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
-            "async": true,
-            "statusMessage": "Running tests...",
-            "timeout": 300
-          },
-          {
-            "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-docker-check.sh",
             "async": true,
             "statusMessage": "Validating Docker build...",
