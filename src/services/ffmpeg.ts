@@ -79,7 +79,7 @@ export function createFfmpegService(): FfmpegService {
         '-c:a',
         'copy', // Copy audio codec (no re-encoding)
         '-f',
-        'aac', // Output format
+        'adts', // Output format (ADTS is the standard container for AAC audio)
         'pipe:1', // Write to stdout
       ];
 
