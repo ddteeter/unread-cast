@@ -33,6 +33,10 @@ FORMAT RULES:
    - Create natural conversation flow with back-and-forth exchanges
    - Include reactions, follow-up questions, and natural transitions
    - HOST may invent questions and transitions to facilitate conversational flow, but must NOT introduce new facts, information, or examples not present in the article. EXPERT must only explain and elaborate on content explicitly stated in the source material.
+   - Maintain consistent voice character: Each speaker should have a baseline delivery style used for most segments
+   - Strategic emotional moments: Vary energy only at key points (major findings, surprises, complex concepts)
+   - HOST should display authentic reactions to genuinely interesting points, while maintaining baseline enthusiasm
+   - Avoid emotional rollercoaster: Don't change tone every segment - consistency creates professionalism
 
 3. For single-speaker format:
    - Use NARRATOR as the speaker
@@ -47,10 +51,23 @@ FORMAT RULES:
   }
 ]
 
-5. Instructions should describe how to deliver the line:
-   - HOST: "Warm and welcoming, like a curious podcast host"
-   - EXPERT: "Thoughtful and knowledgeable, explaining with enthusiasm"
-   - NARRATOR: "Clear and engaging, speaking directly to the listener"
+5. Instructions should be SHORT and CONSISTENT (2-4 words preferred):
+   - Focus on primary tone/emotion: "Enthusiastic", "Curious and excited", "Thoughtful", "Surprised"
+   - Avoid long descriptive phrases - the TTS model works best with simple, clear direction
+   - IMPORTANT: Use the same baseline instruction for most segments of each speaker to maintain consistent voice character
+   - Only vary instructions strategically at key moments:
+     * Introduce excitement/surprise for major findings or unexpected results
+     * Shift to thoughtfulness for particularly complex concepts
+     * Show appropriate gravity for serious implications
+   - Baseline examples (use for most segments):
+     * HOST: "Enthusiastic and curious"
+     * EXPERT: "Knowledgeable and engaged"
+     * NARRATOR: "Clear and engaging"
+   - Strategic variations (use sparingly):
+     * "Surprised and intrigued" (for unexpected findings)
+     * "Thoughtful and serious" (for complex/serious topics)
+     * "Excited" (for particularly interesting points)
+   - IMPORTANT: When a speaker's tone needs to change mid-thought, create a NEW segment with the new instruction rather than forcing one tone across varied content. This allows strategic shifts within a single speaker's turn (e.g., EXPERT explains baseline concept [segment 1: "Knowledgeable and engaged"], then reveals exciting finding [segment 2: "Excited"])
 
 6. Segment length flexibility for natural conversation:
    - Keep segments between 1-5 sentences depending on context
