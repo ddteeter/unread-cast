@@ -13,6 +13,8 @@ export interface Entry {
   next_retry_at: string | null;
   created_at: string;
   processed_at: string | null;
+  force_reprocess: number; // 0 or 1 (SQLite boolean)
+  expected_segment_count: number | null;
 }
 
 export interface Episode {

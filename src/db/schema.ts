@@ -19,7 +19,9 @@ export function initializeSchema(db: Database.Database): void {
       retry_count INTEGER DEFAULT 0,
       next_retry_at TEXT,
       created_at TEXT NOT NULL,
-      processed_at TEXT
+      processed_at TEXT,
+      force_reprocess INTEGER DEFAULT 0,
+      expected_segment_count INTEGER DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS episodes (

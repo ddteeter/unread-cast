@@ -141,6 +141,8 @@ export function createScheduler(deps: SchedulerDependencies, config: SchedulerCo
           next_retry_at: row.next_retry_at as string | null,
           created_at: row.created_at as string,
           processed_at: row.processed_at as string | null,
+          force_reprocess: (row.force_reprocess as number) || 0,
+          expected_segment_count: (row.expected_segment_count as number | null) || null,
         };
 
         console.log(`Processing entry ${entry.id}: ${entry.url}`);

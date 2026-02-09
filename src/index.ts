@@ -100,6 +100,7 @@ async function main() {
     {
       minContentLength: config.minContentLength,
       maxRetries: config.maxRetries,
+      tempDir,
     }
   );
 

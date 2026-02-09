@@ -12,6 +12,7 @@ export interface EntryHandlers {
   createEntry(input: CreateEntryInput): Promise<Entry>;
   getEntry(id: string): Promise<Entry | null>;
   listEntries(status?: string): Promise<Entry[]>;
+  forceReprocess(id: string): Promise<void>;
 }
 
 function isValidUrl(urlString: string): boolean {
@@ -78,6 +79,8 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
       next_retry_at: null,
       created_at: createdAt,
       processed_at: null,
+      force_reprocess: 0,
+      expected_segment_count: null,
     };
   }
 
@@ -106,9 +109,29 @@ export function createEntryHandlers(db: Database.Database): EntryHandlers {
     return rows as unknown as Entry[];
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async function forceReprocess(id: string): Promise<void> {
+    const result = db
+      .prepare(
+        `UPDATE entries
+         SET force_reprocess = 1,
+             status = 'pending',
+             next_retry_at = NULL
+         WHERE id = ?`
+      )
+      .run(id);
+
+    if (result.changes === 0) {
+      const error = new Error('Entry not found');
+      (error as Error & { code: string }).code = 'NOT_FOUND';
+      throw error;
+    }
+  }
+
   return {
     createEntry,
     getEntry,
     listEntries,
+    forceReprocess,
   };
 }

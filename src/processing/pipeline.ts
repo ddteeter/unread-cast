@@ -1,5 +1,7 @@
 // src/processing/pipeline.ts
 import { v4 as uuidv4 } from 'uuid';
+import { existsSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import type Database from 'better-sqlite3';
 import type { ProcessingResult, Entry, Transcript } from '../types/index.js';
 import type { BudgetService } from '../services/budget.js';
@@ -10,6 +12,7 @@ import type { LLMUsage } from '../services/openai.js';
 export interface PipelineConfig {
   minContentLength: number;
   maxRetries: number;
+  tempDir: string;
 }
 
 export interface ProcessingPipeline {
@@ -80,6 +83,19 @@ export function createProcessingPipeline(
     return new Date(Date.now() + delayMs).toISOString();
   }
 
+  function validateSegments(entryId: string, expectedCount: number, tempDir: string): boolean {
+    // Check if all expected segment files exist
+    for (let i = 0; i < expectedCount; i++) {
+      const segmentPath = join(tempDir, `${entryId}_${i}.aac`);
+      if (!existsSync(segmentPath)) {
+        console.log(`[Resume] Entry ${entryId}: Missing segment ${i} at ${segmentPath}`);
+        return false;
+      }
+    }
+    console.log(`[Resume] Entry ${entryId}: All ${expectedCount} segments validated`);
+    return true;
+  }
+
   async function processEntry(entry: Entry): Promise<ProcessingResult> {
     const entryId = entry.id;
     let segmentFiles: string[] = [];
@@ -88,103 +104,235 @@ export function createProcessingPipeline(
       // Mark as processing
       db.prepare('UPDATE entries SET status = ? WHERE id = ?').run('processing', entryId);
 
+      // Step 0: Determine resume point based on existing state
+      const shouldResume = !entry.force_reprocess;
+      let resumeFrom: 'fetch' | 'extract' | 'transcript' | 'tts' | 'merge' = 'fetch';
+
+      if (shouldResume) {
+        // Check what we can skip based on persisted state
+        if (entry.extracted_content && entry.transcript_json && entry.expected_segment_count) {
+          // Have transcript, check if segments exist and are valid
+          const segmentsValid = validateSegments(
+            entryId,
+            entry.expected_segment_count,
+            config.tempDir
+          );
+          if (segmentsValid) {
+            resumeFrom = 'merge';
+            console.log(`[Resume] Entry ${entryId}: Resuming from merge (all segments valid)`);
+          } else {
+            resumeFrom = 'tts';
+            console.log(`[Resume] Entry ${entryId}: Resuming from TTS (segments incomplete)`);
+          }
+        } else if (entry.extracted_content && entry.transcript_json) {
+          resumeFrom = 'tts';
+          console.log(`[Resume] Entry ${entryId}: Resuming from TTS (transcript exists)`);
+        } else if (entry.extracted_content) {
+          resumeFrom = 'transcript';
+          console.log(`[Resume] Entry ${entryId}: Resuming from transcript (content extracted)`);
+        }
+      } else {
+        console.log(`[Resume] Entry ${entryId}: Force reprocess enabled - running full pipeline`);
+        // Clear all intermediate state for fresh run
+        db.prepare(
+          'UPDATE entries SET extracted_content = NULL, transcript_json = NULL, ' +
+            'expected_segment_count = NULL, title = NULL WHERE id = ?'
+        ).run(entryId);
+      }
+
+      // Clear force_reprocess flag after using it
+      if (entry.force_reprocess) {
+        db.prepare('UPDATE entries SET force_reprocess = 0 WHERE id = ?').run(entryId);
+      }
+
       // Step 1: Fetch HTML
-      const html = await fetchHtml(entry.url);
+      let html: string;
+      if (resumeFrom === 'fetch') {
+        html = await fetchHtml(entry.url);
+      } else {
+        html = ''; // Not needed when resuming
+      }
 
       // Step 2: Extract content
-      let title = '';
-      let content = '';
-      let useLLMFallback = false;
+      let title: string;
+      let content: string;
 
-      try {
-        const result = await extractContent(html);
-        title = result.title;
-        content = result.content;
+      if (resumeFrom === 'fetch') {
+        // Run extraction as normal
+        let useLLMFallback = false;
+        title = ''; // Initialize to empty
+        content = ''; // Initialize to empty
 
-        // Check if content is too short
-        if (content.length < config.minContentLength) {
+        try {
+          const result = await extractContent(html);
+          title = result.title;
+          content = result.content;
+
+          // Check if content is too short
+          if (content.length < config.minContentLength) {
+            useLLMFallback = true;
+          }
+        } catch (_error) {
+          // Readability failed - fall back to LLM
           useLLMFallback = true;
         }
-      } catch (_error) {
-        // Readability failed - fall back to LLM
-        useLLMFallback = true;
-      }
 
-      // Fallback to LLM if extraction failed or content too short
-      if (useLLMFallback) {
-        const llmResult = await transcriber.extractContentWithLLM(html);
-        content = llmResult.content;
+        // Fallback to LLM if extraction failed or content too short
+        if (useLLMFallback) {
+          const llmResult = await transcriber.extractContentWithLLM(html);
+          content = llmResult.content;
 
-        // Log LLM extraction usage
-        const service = llmResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
-        await budgetService.logUsage({
-          entry_id: entryId,
-          service,
-          model: llmResult.model,
-          input_units: llmResult.usage.inputTokens,
-          output_units: llmResult.usage.outputTokens,
-          cost_usd: budgetService.calculateCost(
+          // Log LLM extraction usage
+          const service = llmResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
+          await budgetService.logUsage({
+            entry_id: entryId,
             service,
-            llmResult.model,
-            llmResult.usage.inputTokens,
-            llmResult.usage.outputTokens
-          ),
-        });
-      }
+            model: llmResult.model,
+            input_units: llmResult.usage.inputTokens,
+            output_units: llmResult.usage.outputTokens,
+            cost_usd: budgetService.calculateCost(
+              service,
+              llmResult.model,
+              llmResult.usage.inputTokens,
+              llmResult.usage.outputTokens
+            ),
+          });
+        }
 
-      // Validate content length
-      if (content.length < config.minContentLength) {
-        throw new Error('Insufficient content extracted');
-      }
+        // Validate content length
+        if (content.length < config.minContentLength) {
+          throw new Error('Insufficient content extracted');
+        }
 
-      // Update entry with extracted content
-      db.prepare('UPDATE entries SET title = ?, extracted_content = ? WHERE id = ?').run(
-        title || 'Untitled',
-        content,
-        entryId
-      );
+        // Update entry with extracted content
+        db.prepare('UPDATE entries SET title = ?, extracted_content = ? WHERE id = ?').run(
+          title || 'Untitled',
+          content,
+          entryId
+        );
+      } else {
+        // Resume: Load from DB
+        title = entry.title || 'Untitled';
+        content = entry.extracted_content!;
+        console.log(`[Resume] Entry ${entryId}: Using cached content (${content.length} chars)`);
+      }
 
       // Step 3: Generate transcript
-      const transcriptResult = await transcriber.generateTranscript(content, title || 'Untitled');
+      let transcript: Transcript;
 
-      // Log transcript usage
-      const transcriptService =
-        transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
-      await budgetService.logUsage({
-        entry_id: entryId,
-        service: transcriptService,
-        model: transcriptResult.model,
-        input_units: transcriptResult.usage.inputTokens,
-        output_units: transcriptResult.usage.outputTokens,
-        cost_usd: budgetService.calculateCost(
-          transcriptService,
-          transcriptResult.model,
-          transcriptResult.usage.inputTokens,
-          transcriptResult.usage.outputTokens
-        ),
-      });
+      if (resumeFrom === 'fetch' || resumeFrom === 'transcript') {
+        // Generate transcript as normal
+        const transcriptResult = await transcriber.generateTranscript(content, title);
 
-      // Update entry with transcript
-      db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?').run(
-        JSON.stringify(transcriptResult.transcript),
-        entryId
-      );
+        // Log transcript usage
+        const transcriptService =
+          transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
+        await budgetService.logUsage({
+          entry_id: entryId,
+          service: transcriptService,
+          model: transcriptResult.model,
+          input_units: transcriptResult.usage.inputTokens,
+          output_units: transcriptResult.usage.outputTokens,
+          cost_usd: budgetService.calculateCost(
+            transcriptService,
+            transcriptResult.model,
+            transcriptResult.usage.inputTokens,
+            transcriptResult.usage.outputTokens
+          ),
+        });
+
+        transcript = transcriptResult.transcript;
+
+        // Update entry with transcript
+        db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?').run(
+          JSON.stringify(transcript),
+          entryId
+        );
+      } else {
+        // Resume: Load from DB
+        try {
+          transcript = JSON.parse(entry.transcript_json!) as Transcript;
+          console.log(
+            `[Resume] Entry ${entryId}: Using cached transcript (${transcript.length} segments)`
+          );
+        } catch (_err) {
+          // Corrupted transcript - regenerate
+          console.log(`[Resume] Entry ${entryId}: Corrupted transcript JSON, regenerating`);
+          const transcriptResult = await transcriber.generateTranscript(content, title);
+          transcript = transcriptResult.transcript;
+
+          // Log usage
+          const transcriptService =
+            transcriptResult.provider === 'anthropic' ? 'anthropic_chat' : 'openai_chat';
+          await budgetService.logUsage({
+            entry_id: entryId,
+            service: transcriptService,
+            model: transcriptResult.model,
+            input_units: transcriptResult.usage.inputTokens,
+            output_units: transcriptResult.usage.outputTokens,
+            cost_usd: budgetService.calculateCost(
+              transcriptService,
+              transcriptResult.model,
+              transcriptResult.usage.inputTokens,
+              transcriptResult.usage.outputTokens
+            ),
+          });
+
+          // Save to DB
+          db.prepare('UPDATE entries SET transcript_json = ? WHERE id = ?').run(
+            JSON.stringify(transcript),
+            entryId
+          );
+        }
+      }
 
       // Step 4: Generate TTS
-      const { segmentFiles: audioSegments, totalUsage: ttsUsage } =
-        await ttsProcessor.processTranscript(transcriptResult.transcript, entryId);
+      if (resumeFrom !== 'merge') {
+        // Clean up any partial/old segments before regenerating
+        if (entry.expected_segment_count) {
+          for (let i = 0; i < entry.expected_segment_count; i++) {
+            const oldSegment = join(config.tempDir, `${entryId}_${i}.aac`);
+            try {
+              unlinkSync(oldSegment);
+            } catch {
+              // Ignore if file doesn't exist
+            }
+          }
+        }
 
-      segmentFiles = audioSegments;
+        // Generate new segments
+        const { segmentFiles: audioSegments, totalUsage: ttsUsage } =
+          await ttsProcessor.processTranscript(transcript, entryId);
 
-      // Log TTS usage
-      await budgetService.logUsage({
-        entry_id: entryId,
-        service: 'openai_tts',
-        model: 'gpt-4o-mini-tts',
-        input_units: ttsUsage.characters,
-        output_units: null,
-        cost_usd: budgetService.calculateCost('openai_tts', 'gpt-4o-mini-tts', ttsUsage.characters),
-      });
+        segmentFiles = audioSegments;
+
+        // Log TTS usage
+        await budgetService.logUsage({
+          entry_id: entryId,
+          service: 'openai_tts',
+          model: 'gpt-4o-mini-tts',
+          input_units: ttsUsage.characters,
+          output_units: null,
+          cost_usd: budgetService.calculateCost(
+            'openai_tts',
+            'gpt-4o-mini-tts',
+            ttsUsage.characters
+          ),
+        });
+
+        // Save segment count to DB
+        db.prepare('UPDATE entries SET expected_segment_count = ? WHERE id = ?').run(
+          segmentFiles.length,
+          entryId
+        );
+      } else {
+        // Resume: Reconstruct segment file paths from transcript
+        segmentFiles = [];
+        for (let i = 0; i < transcript.length; i++) {
+          segmentFiles.push(join(config.tempDir, `${entryId}_${i}.aac`));
+        }
+        console.log(`[Resume] Entry ${entryId}: Reusing ${segmentFiles.length} TTS segments`);
+      }
 
       // Step 5: Merge and upload
       const episodeId = uuidv4();

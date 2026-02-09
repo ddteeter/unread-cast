@@ -30,5 +30,14 @@ export const migrations: IMigration[] = [
       DROP TABLE IF EXISTS entries;
     `,
   },
+  {
+    version: 2,
+    up: loadSql('002-add-resume-support.sql'),
+    down: `
+      DROP INDEX IF EXISTS idx_entries_force_reprocess;
+      -- Note: SQLite doesn't support DROP COLUMN, so down migration only removes index
+      -- Columns remain but are harmless (default values prevent issues)
+    `,
+  },
   // Future migrations will be added here
 ];
