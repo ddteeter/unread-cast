@@ -65,13 +65,29 @@ export const EXTRACT_SYSTEM_PROMPT = `Extract the main article content from the 
 /**
  * Parses and validates a transcript JSON string into TranscriptSegment array.
  * Supports both array format and object-with-array format.
+ * Handles markdown code blocks and extra whitespace from LLM responses.
  */
 export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[] {
+  // Log the raw response for debugging
+  console.log('Raw LLM transcript response (first 500 chars):', jsonText.substring(0, 500));
+
+  // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
+  let cleanedText = jsonText.trim();
+  const codeBlockMatch = cleanedText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  if (codeBlockMatch) {
+    cleanedText = codeBlockMatch[1].trim();
+    console.log('Stripped markdown code blocks from LLM response');
+  }
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    throw new Error('Failed to parse transcript JSON');
+    parsed = JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Failed to parse transcript JSON:', error);
+    console.error('Cleaned text (first 1000 chars):', cleanedText.substring(0, 1000));
+    throw new Error(
+      `Failed to parse transcript JSON: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 
   // Handle both array directly and object with array property
@@ -80,11 +96,14 @@ export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[
     : ((parsed as { transcript?: TranscriptSegment[] }).transcript ?? []);
 
   // Validate each segment
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
     if (!segment.speaker || !segment.text || !segment.instruction) {
-      throw new Error('Invalid transcript segment structure');
+      console.error(`Invalid segment at index ${i}:`, segment);
+      throw new Error(`Invalid transcript segment structure at index ${i}`);
     }
   }
 
+  console.log(`Successfully parsed ${segments.length} transcript segments`);
   return segments;
 }

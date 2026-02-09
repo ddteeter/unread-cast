@@ -57,75 +57,23 @@ docker-compose up-d
 
 ## Automated Testing and Validation
 
-This repository uses **Claude Code hooks** for background validation and **git pre-commit hooks** for code quality enforcement.
-
-### Claude Code Hooks
-
-When Claude Code edits a file in `src/` or `tests/`, two background hooks automatically run:
-
-1. **Tests** (asynchronous) - Runs full test suite for early failure detection
-2. **Docker validation** (asynchronous) - Validates Docker builds
-
-These hooks run in the background and provide early warnings without blocking Claude's workflow. Format/lint enforcement is handled by git pre-commit hooks (see below).
-
-### Hook Configuration
-
-The hooks are defined in `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-tests.sh",
-            "async": true,
-            "statusMessage": "Running tests...",
-            "timeout": 300
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-docker-check.sh",
-            "async": true,
-            "statusMessage": "Validating Docker build...",
-            "timeout": 180
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Hook Scripts
-
-- `.claude/hooks/run-tests.sh` - Runs the full test suite
-- `.claude/hooks/run-docker-check.sh` - Validates Docker build configuration
-
-Both scripts only execute for `.ts`/`.js` files in `src/` or `tests/` directories to avoid unnecessary overhead.
-
-### Important Notes
-
-- Hooks run **asynchronously** in the background and don't block Claude's workflow
-- They provide early warnings about test failures and Docker issues
-- Hook scripts must be executable: `chmod +x .claude/hooks/*.sh`
-- **Format/lint enforcement is handled by git pre-commit hooks** (not Claude hooks)
+This repository uses **git pre-commit hooks** (via husky + lint-staged) to enforce code quality and prevent broken code from being committed.
 
 ## Git Pre-commit Hooks (Husky + Lint-staged)
 
-In addition to Claude Code hooks, the repository uses **husky** and **lint-staged** to enforce code quality at commit time.
+The repository uses **husky** and **lint-staged** to enforce code quality at commit time.
 
 ### How It Works
 
 When anyone (Claude or human) attempts to commit code:
 
 1. **Pre-commit hook** automatically runs via husky
-2. **lint-staged** runs prettier and eslint only on staged files
+2. **lint-staged** runs on staged TypeScript/JavaScript files:
+   - Prettier formats code
+   - ESLint fixes issues
+   - Full test suite runs
 3. **Auto-fixes** are applied and re-staged
-4. **Commit proceeds** only if all checks pass
+4. **Commit is blocked** if tests fail or linting errors remain
 
 ### Setup
 
@@ -142,13 +90,14 @@ Defined in `package.json`:
   "lint-staged": {
     "*.{ts,js}": [
       "prettier --write",
-      "eslint --fix"
+      "eslint --fix",
+      "npm test -- --run"
     ]
   }
 }
 ```
 
-This **solves the recurring issue** where Claude Code hooks run but formatting changes aren't committed, causing CI failures.
+This ensures code quality and test success at commit time. All checks are blocking - if any fail, the commit is rejected and must be fixed before proceeding. Docker build validation is handled by CI.
 
 ## Architecture
 
