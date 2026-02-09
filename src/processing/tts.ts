@@ -36,7 +36,7 @@ export function createTTSProcessor(openaiService: OpenAIService, config: TTSConf
       voiceAssignment['NARRATOR'] = shuffledVoices[0];
     } else {
       voiceAssignment['HOST'] = shuffledVoices[0];
-      voiceAssignment['EXPERT'] = shuffledVoices[1] || shuffledVoices[0];
+      voiceAssignment['AUTHOR'] = shuffledVoices[1] || shuffledVoices[0];
     }
 
     const segmentFiles: string[] = [];

@@ -53,7 +53,7 @@ export interface ProcessingLock {
 }
 
 export interface TranscriptSegment {
-  speaker: 'HOST' | 'EXPERT' | 'NARRATOR';
+  speaker: 'HOST' | 'AUTHOR' | 'NARRATOR';
   text: string;
   instruction: string;
 }
