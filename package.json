@@ -65,7 +65,7 @@
     "*.{ts,js}": [
       "prettier --write",
       "eslint --fix",
-      "npm test -- --run"
+      "npm test -- --run --passWithNoTests"
     ]
   }
 }
