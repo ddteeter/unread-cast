@@ -57,23 +57,11 @@ docker-compose up-d
 
 ## Automated Testing and Validation
 
-This repository uses **Claude Code hooks** for background validation and **git pre-commit hooks** for code quality enforcement.
-
-### Claude Code Hooks
-
-When Claude Code edits Docker-related files (Dockerfile, .dockerignore, package.json, etc.), a background hook automatically runs:
-
-- **Docker validation** (asynchronous) - Validates Docker builds to catch configuration issues early
-
-This hook runs in the background and provides early warnings without blocking Claude's workflow.
-
-### Hook Configuration
-
-The hook is defined in `.claude/settings.json` and only triggers for Docker-related file changes. See `.claude/hooks/run-docker-check.sh` for the validation logic.
+This repository uses **git pre-commit hooks** (via husky + lint-staged) to enforce code quality and prevent broken code from being committed.
 
 ## Git Pre-commit Hooks (Husky + Lint-staged)
 
-In addition to Claude Code hooks, the repository uses **husky** and **lint-staged** to enforce code quality at commit time.
+The repository uses **husky** and **lint-staged** to enforce code quality at commit time.
 
 ### How It Works
 
@@ -109,7 +97,7 @@ Defined in `package.json`:
 }
 ```
 
-This ensures code quality and test success at commit time, preventing broken code from being committed. Tests run during the commit, so if they fail, the commit is blocked and Claude or the developer can fix issues before they're pushed.
+This ensures code quality and test success at commit time. All checks are blocking - if any fail, the commit is rejected and must be fixed before proceeding. Docker build validation is handled by CI.
 
 ## Architecture
 
