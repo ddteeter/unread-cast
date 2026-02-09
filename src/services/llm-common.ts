@@ -95,11 +95,6 @@ export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[
     ? (parsed as TranscriptSegment[])
     : ((parsed as { transcript?: TranscriptSegment[] }).transcript ?? []);
 
-  if (segments.length === 0) {
-    console.error('No transcript segments found in parsed JSON');
-    throw new Error('No transcript segments found in LLM response');
-  }
-
   // Validate each segment
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
