@@ -28,11 +28,11 @@ FORMAT RULES:
    - For substantial or complex content: Use two speakers (dialogue)
 
 2. For two-speaker format:
-   - HOST: The main presenter who guides the conversation
-   - EXPERT: A knowledgeable co-host who adds depth and asks clarifying questions
-   - Create natural conversation flow with back-and-forth exchanges
+   - HOST: An interviewer who asks questions to draw out the article's content
+   - AUTHOR: The article's author who explains and discusses their own work
+   - Create natural interview flow with back-and-forth exchanges
    - Include reactions, follow-up questions, and natural transitions
-   - HOST may invent questions and transitions to facilitate conversational flow, but must NOT introduce new facts, information, or examples not present in the article. EXPERT must only explain and elaborate on content explicitly stated in the source material.
+   - HOST may invent questions and transitions to facilitate conversational flow, but must NOT introduce new facts, information, or examples not present in the article. AUTHOR must only explain and elaborate on content explicitly stated in the source material.
    - Maintain consistent voice character: Each speaker should have a baseline delivery style used for most segments
    - Strategic emotional moments: Vary energy only at key points (major findings, surprises, complex concepts)
    - HOST should display authentic reactions to genuinely interesting points, while maintaining baseline enthusiasm
@@ -45,7 +45,7 @@ FORMAT RULES:
 4. Output MUST be valid JSON array with this exact structure:
 [
   {
-    "speaker": "HOST" | "EXPERT" | "NARRATOR",
+    "speaker": "HOST" | "AUTHOR" | "NARRATOR",
     "text": "The spoken content for this segment",
     "instruction": "Speaking style instruction for TTS"
   }
@@ -61,18 +61,18 @@ FORMAT RULES:
      * Show appropriate gravity for serious implications
    - Baseline examples (use for most segments):
      * HOST: "Enthusiastic and curious"
-     * EXPERT: "Knowledgeable and engaged"
+     * AUTHOR: "Knowledgeable and engaged"
      * NARRATOR: "Clear and engaging"
    - Strategic variations (use sparingly):
      * "Surprised and intrigued" (for unexpected findings)
      * "Thoughtful and serious" (for complex/serious topics)
      * "Excited" (for particularly interesting points)
-   - IMPORTANT: When a speaker's tone needs to change mid-thought, create a NEW segment with the new instruction rather than forcing one tone across varied content. This allows strategic shifts within a single speaker's turn (e.g., EXPERT explains baseline concept [segment 1: "Knowledgeable and engaged"], then reveals exciting finding [segment 2: "Excited"])
+   - IMPORTANT: When a speaker's tone needs to change mid-thought, create a NEW segment with the new instruction rather than forcing one tone across varied content. This allows strategic shifts within a single speaker's turn (e.g., AUTHOR explains baseline concept [segment 1: "Knowledgeable and engaged"], then reveals exciting finding [segment 2: "Excited"])
 
 6. Segment length flexibility for natural conversation:
    - Keep segments between 1-5 sentences depending on context
    - HOST segments can be shorter (questions, reactions, transitions)
-   - EXPERT segments can be longer when explaining concepts from the article
+   - AUTHOR segments can be longer when explaining concepts from the article
    - Maintain natural conversational rhythm and pacing
 
 7. Begin with a brief introduction of the topic, end with a concise summary or takeaway.`;

@@ -5,14 +5,14 @@ describe('parseAndValidateTranscript', () => {
   it('should parse valid array format', () => {
     const json = JSON.stringify([
       { speaker: 'HOST', text: 'Hello', instruction: 'Warm tone' },
-      { speaker: 'EXPERT', text: 'World', instruction: 'Thoughtful' },
+      { speaker: 'AUTHOR', text: 'World', instruction: 'Thoughtful' },
     ]);
 
     const result = parseAndValidateTranscript(json);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual({ speaker: 'HOST', text: 'Hello', instruction: 'Warm tone' });
-    expect(result[1]).toEqual({ speaker: 'EXPERT', text: 'World', instruction: 'Thoughtful' });
+    expect(result[1]).toEqual({ speaker: 'AUTHOR', text: 'World', instruction: 'Thoughtful' });
   });
 
   it('should parse valid object-with-array format', () => {
