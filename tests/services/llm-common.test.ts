@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { parseAndValidateTranscript } from '../../src/services/llm-common.js';
 
 describe('parseAndValidateTranscript', () => {
@@ -71,5 +71,58 @@ describe('parseAndValidateTranscript', () => {
 
     const result = parseAndValidateTranscript(json);
     expect(result).toHaveLength(0); // Should default to empty array
+  });
+
+  // Structural validation alone cannot catch schema-valid-but-corrupt model output.
+  // gpt-5.6-luna has been reported emitting degenerate tokens inside string values
+  // while the JSON stays valid under strict mode, which would reach TTS and be spoken.
+  describe('content corruption guards', () => {
+    const segment = (text: string) =>
+      JSON.stringify([{ speaker: 'HOST', text, instruction: 'Warm' }]);
+
+    it('should reject whitespace-only text', () => {
+      expect(() => parseAndValidateTranscript(segment('   \n  '))).toThrow(/empty or whitespace/);
+    });
+
+    it('should reject Unicode replacement characters', () => {
+      expect(() => parseAndValidateTranscript(segment('Hello there\uFFFD'))).toThrow(
+        /replacement characters/
+      );
+    });
+
+    it('should reject control characters', () => {
+      expect(() => parseAndValidateTranscript(segment('Hello\u0007 there'))).toThrow(
+        /control characters/
+      );
+    });
+
+    it('should allow ordinary punctuation and newlines', () => {
+      const text = 'Hello there — "quoted", and a line\nbreak. Costs $5 (or €4).';
+      const result = parseAndValidateTranscript(segment(text));
+      expect(result[0].text).toBe(text);
+    });
+
+    it('should warn but not throw on a small non-Latin run in Latin text', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const text = `${'This is a normal English sentence. '.repeat(10)}你好`;
+
+      const result = parseAndValidateTranscript(segment(text));
+
+      expect(result).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('possible model output corruption')
+      );
+      warn.mockRestore();
+    });
+
+    it('should not warn on legitimately non-Latin content', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = parseAndValidateTranscript(segment('你好，世界。'.repeat(10)));
+
+      expect(result).toHaveLength(1);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
   });
 });

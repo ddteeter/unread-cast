@@ -19,6 +19,15 @@ const configSchema = z.object({
   anthropicApiKey: z.string().optional(),
   llmProvider: z.enum(['openai', 'anthropic']).default('anthropic'),
   llmModel: z.string().default('claude-sonnet-4-5-20250929'),
+  // Per-stage model overrides. Both fall back to llmModel when unset, so existing
+  // deployments keep working. Transcript generation and HTML extraction have very
+  // different profiles (short input/long output vs. very long input/short output),
+  // so they are worth pointing at different models.
+  llmTranscriptModel: z.string().optional(),
+  llmExtractionModel: z.string().optional(),
+  // Only sent to models that support it (the gpt-5 family). Ignored otherwise.
+  llmReasoningEffort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
+  ttsModel: z.string().default('gpt-4o-mini-tts-2025-12-15'),
   ttsVoices: z
     .array(z.string())
     .default([
@@ -54,7 +63,12 @@ const configSchema = z.object({
   maxRetries: z.number().default(5),
 });
 
-export type Config = z.infer<typeof configSchema>;
+// The per-stage model overrides are optional in the schema but always resolved to a
+// concrete value by parseEnv(), so consumers never have to repeat the fallback.
+export type Config = z.infer<typeof configSchema> & {
+  llmTranscriptModel: string;
+  llmExtractionModel: string;
+};
 
 function parseEnv(): Config {
   const raw = {
@@ -74,6 +88,15 @@ function parseEnv(): Config {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     llmProvider: process.env.LLM_PROVIDER as 'openai' | 'anthropic' | undefined,
     llmModel: process.env.LLM_MODEL,
+    llmTranscriptModel: process.env.LLM_TRANSCRIPT_MODEL,
+    llmExtractionModel: process.env.LLM_EXTRACTION_MODEL,
+    llmReasoningEffort: process.env.LLM_REASONING_EFFORT as
+      | 'minimal'
+      | 'low'
+      | 'medium'
+      | 'high'
+      | undefined,
+    ttsModel: process.env.TTS_MODEL,
     ttsVoices: process.env.TTS_VOICES?.split(',').map((v) => v.trim()),
     feedTitle: process.env.FEED_TITLE,
     feedAuthor: process.env.FEED_AUTHOR,
@@ -102,7 +125,12 @@ function parseEnv(): Config {
   };
 
   try {
-    return configSchema.parse(raw);
+    const parsed = configSchema.parse(raw);
+    return {
+      ...parsed,
+      llmTranscriptModel: parsed.llmTranscriptModel ?? parsed.llmModel,
+      llmExtractionModel: parsed.llmExtractionModel ?? parsed.llmModel,
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const messages = error.issues.map((err) => {

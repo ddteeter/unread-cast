@@ -82,7 +82,20 @@ export interface PricingConfig {
     [model: string]: {
       input_per_1m?: number;
       output_per_1m?: number;
+      /**
+       * Legacy flat per-character TTS rate. Understates real spend by ~40% against
+       * OpenAI's published token rates; retained so existing pricing files keep
+       * working. Prefer the audio_output_per_1m fields below.
+       */
       chars_per_1m?: number;
+      /** TTS text input, per 1M tokens. */
+      text_input_per_1m?: number;
+      /** TTS audio output, per 1M tokens. This is the dominant term. */
+      audio_output_per_1m?: number;
+      /** Characters -> audio output tokens. See TTS_TOKEN_ESTIMATES in budget.ts. */
+      est_audio_tokens_per_char?: number;
+      /** Characters -> text input tokens. See TTS_TOKEN_ESTIMATES in budget.ts. */
+      est_text_tokens_per_char?: number;
     };
   };
   anthropic?: {

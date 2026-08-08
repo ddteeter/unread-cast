@@ -1,45 +1,73 @@
 {
+  "_comment": [
+    "Pricing in USD. Update as provider rates change.",
+    "Chat models: input_per_1m / output_per_1m are per 1M tokens. For reasoning models",
+    "(the gpt-5 family) reasoning tokens are billed as output tokens, so real cost can",
+    "exceed a naive input+output estimate.",
+    "TTS: text_input_per_1m and audio_output_per_1m are per 1M tokens. The speech",
+    "endpoint returns no usage object, so tokens are estimated from character count -",
+    "see TTS_TOKEN_ESTIMATES in src/services/budget.ts for the derivation.",
+    "chars_per_1m is the legacy flat per-character rate; it understates real spend by",
+    "~40% and is kept only so older pricing files keep loading."
+  ],
   "openai": {
+    "gpt-5.6-sol": {
+      "input_per_1m": 5.0,
+      "output_per_1m": 30.0
+    },
+    "gpt-5.6-terra": {
+      "input_per_1m": 2.0,
+      "output_per_1m": 12.0
+    },
+    "gpt-5.6-luna": {
+      "input_per_1m": 0.2,
+      "output_per_1m": 1.2
+    },
+    "gpt-5.3": {
+      "input_per_1m": 1.75,
+      "output_per_1m": 14.0
+    },
     "gpt-5.2": {
       "input_per_1m": 1.75,
-      "output_per_1m": 14.00
-    },
-    "gpt-5": {
-      "input_per_1m": 1.25,
-      "output_per_1m": 10.00
-    },
-    "gpt-4.1": {
-      "input_per_1m": 2.00,
-      "output_per_1m": 8.00
-    },
-    "gpt-4o": {
-      "input_per_1m": 2.50,
-      "output_per_1m": 10.00
+      "output_per_1m": 14.0
     },
     "gpt-4o-mini": {
       "input_per_1m": 0.15,
-      "output_per_1m": 0.60
+      "output_per_1m": 0.6
+    },
+    "gpt-4o-mini-tts-2025-12-15": {
+      "text_input_per_1m": 0.6,
+      "audio_output_per_1m": 12.0,
+      "est_audio_tokens_per_char": 1.39,
+      "est_text_tokens_per_char": 0.25
     },
     "gpt-4o-mini-tts": {
-      "chars_per_1m": 12.00
+      "text_input_per_1m": 0.6,
+      "audio_output_per_1m": 12.0,
+      "est_audio_tokens_per_char": 1.39,
+      "est_text_tokens_per_char": 0.25
     }
   },
   "anthropic": {
-    "claude-opus-4-6": {
-      "input_per_1m": 5.00,
-      "output_per_1m": 25.00
+    "claude-opus-5": {
+      "input_per_1m": 5.0,
+      "output_per_1m": 25.0
     },
-    "claude-opus-4-5-20251101": {
-      "input_per_1m": 15.00,
-      "output_per_1m": 75.00
+    "claude-sonnet-5": {
+      "input_per_1m": 3.0,
+      "output_per_1m": 15.0
+    },
+    "claude-opus-4-6": {
+      "input_per_1m": 5.0,
+      "output_per_1m": 25.0
     },
     "claude-sonnet-4-5-20250929": {
-      "input_per_1m": 3.00,
-      "output_per_1m": 15.00
+      "input_per_1m": 3.0,
+      "output_per_1m": 15.0
     },
-    "claude-sonnet-4-20250514": {
-      "input_per_1m": 3.00,
-      "output_per_1m": 15.00
+    "claude-haiku-4-5": {
+      "input_per_1m": 1.0,
+      "output_per_1m": 5.0
     }
   }
 }

@@ -5,7 +5,10 @@ import type { AnthropicService } from '../services/anthropic.js';
 
 export interface TranscriberConfig {
   provider: 'openai' | 'anthropic';
-  model: string;
+  /** Model for turning an extracted article into a podcast script. */
+  transcriptModel: string;
+  /** Model for the LLM fallback that pulls article text out of raw HTML. */
+  extractionModel: string;
   minContentLength: number;
 }
 
@@ -27,20 +30,24 @@ export function createTranscriber(
     }
 
     if (config.provider === 'anthropic' && anthropicService) {
-      const result = await anthropicService.generateTranscript(content, title, config.model);
+      const result = await anthropicService.generateTranscript(
+        content,
+        title,
+        config.transcriptModel
+      );
       return {
         ...result,
         provider: 'anthropic',
-        model: config.model,
+        model: config.transcriptModel,
       };
     }
 
     if (openaiService) {
-      const result = await openaiService.generateTranscript(content, title, config.model);
+      const result = await openaiService.generateTranscript(content, title, config.transcriptModel);
       return {
         ...result,
         provider: 'openai',
-        model: config.model,
+        model: config.transcriptModel,
       };
     }
 
@@ -54,20 +61,20 @@ export function createTranscriber(
     model: string;
   }> {
     if (config.provider === 'anthropic' && anthropicService) {
-      const result = await anthropicService.extractContent(html, config.model);
+      const result = await anthropicService.extractContent(html, config.extractionModel);
       return {
         ...result,
         provider: 'anthropic',
-        model: config.model,
+        model: config.extractionModel,
       };
     }
 
     if (openaiService) {
-      const result = await openaiService.extractContent(html, config.model);
+      const result = await openaiService.extractContent(html, config.extractionModel);
       return {
         ...result,
         provider: 'openai',
-        model: config.model,
+        model: config.extractionModel,
       };
     }
 

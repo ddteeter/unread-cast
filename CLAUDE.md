@@ -193,8 +193,11 @@ All config via environment variables, validated with Zod schema in `src/config.t
 **Optional:**
 - `LLM_PROVIDER` - Choose `anthropic` (default) or `openai`
 - `LLM_MODEL` - Specific model to use (default: `claude-sonnet-4-5-20250929`)
-  - **Anthropic**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (default)
-  - **OpenAI**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
+  - **Anthropic**: `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-6`, `claude-sonnet-4-5-20250929` (default), `claude-haiku-4-5`
+  - **OpenAI**: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.3`, `gpt-5.2`, `gpt-4o-mini`
+- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL` - Per-stage overrides, default to `LLM_MODEL`
+- `LLM_REASONING_EFFORT` - Only sent to the gpt-5 family; reasoning tokens bill as output
+- `TTS_MODEL` - Speech model (default: `gpt-4o-mini-tts-2025-12-15`)
 - `PUSHOVER_*` - Notifications for budget/failures
 - `CRON_SCHEDULE` - Default: `0 */6 * * *` (every 6 hours)
 
@@ -231,6 +234,22 @@ Both OpenAI and Anthropic services implement same interface:
 - `extractContentWithLLM(html)` - Fallback content extraction + usage
 
 Token limits enforced via `maxTranscriptTokens` and `maxExtractionTokens` config.
+
+**Model-family request shaping** — request parameters are not uniform across model
+generations, and both services branch on the model string:
+- OpenAI's gpt-5 family and o-series are reasoning models: they reject `temperature` and
+  take `max_completion_tokens` instead of `max_tokens`. See `isReasoningModel()` in
+  `src/services/openai.ts`.
+- Anthropic removed sampling parameters in the Opus 4.7+ / Sonnet 5 / Fable 5
+  generations; sending `temperature` there is a 400. See `supportsSampling()` in
+  `src/services/anthropic.ts`. This is a deny-list, so unknown models keep the
+  historical behaviour.
+
+**Stay on Chat Completions, not the Responses API.** There is an open report of
+gpt-5.6-luna emitting degenerate tokens inside string values under Responses API +
+structured outputs while the identical Chat Completions request is clean. The corrupted
+output stays schema-valid, so it would pass validation and be spoken aloud by TTS.
+`validateSegmentText()` in `llm-common.ts` is the backstop for this class of failure.
 
 ### RSS Feed Generation
 

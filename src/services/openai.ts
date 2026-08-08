@@ -12,6 +12,85 @@ import {
 // Re-export types for backward compatibility
 export type { LLMUsage, TTSUsage };
 
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+
+/**
+ * The gpt-5 family (including the GPT-5.6 Sol/Terra/Luna tiers) and the o-series are
+ * reasoning models. They differ from the gpt-4 generation in two ways that break a
+ * naive request:
+ *
+ *   - `temperature` / `top_p` are rejected or silently ignored.
+ *   - `max_tokens` is replaced by `max_completion_tokens`.
+ *
+ * They also accept `reasoning_effort`. Reasoning tokens are billed as output tokens,
+ * so effort is a cost lever as well as a quality one.
+ */
+function isReasoningModel(model: string): boolean {
+  return /^(gpt-5|o[1-9])/i.test(model);
+}
+
+/**
+ * Builds the token-limit and sampling half of a chat completion request for whichever
+ * model family we are talking to.
+ *
+ * `temperature` is deliberately dropped for reasoning models rather than passed as a
+ * default: sending it is an error on that family, and there is no equivalent knob.
+ */
+function buildModelParams(
+  model: string,
+  maxTokens: number,
+  temperature: number,
+  reasoningEffort?: ReasoningEffort
+): Record<string, unknown> {
+  if (isReasoningModel(model)) {
+    return {
+      max_completion_tokens: maxTokens,
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+    };
+  }
+  return { max_tokens: maxTokens, temperature };
+}
+
+/**
+ * Strict schema for the podcast transcript.
+ *
+ * This replaces the older `response_format: { type: 'json_object' }`, which only
+ * guaranteed *some* JSON and left us stripping markdown fences and guessing at shape.
+ *
+ * We deliberately stay on Chat Completions rather than migrating to the Responses API:
+ * as of 2026-08 there is an open report of gpt-5.6-luna emitting degenerate tokens
+ * (foreign scripts, leaked reasoning) inside string values under Responses API +
+ * structured outputs, while the identical request via Chat Completions is clean. The
+ * corrupted output stays schema-valid, so it would pass validation and be spoken aloud.
+ */
+const TRANSCRIPT_RESPONSE_FORMAT = {
+  type: 'json_schema' as const,
+  json_schema: {
+    name: 'podcast_transcript',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        transcript: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              speaker: { type: 'string', enum: ['HOST', 'AUTHOR', 'NARRATOR'] },
+              text: { type: 'string' },
+              instruction: { type: 'string' },
+            },
+            required: ['speaker', 'text', 'instruction'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['transcript'],
+      additionalProperties: false,
+    },
+  },
+};
+
 export interface OpenAIService {
   generateTranscript(
     content: string,
@@ -22,14 +101,16 @@ export interface OpenAIService {
   textToSpeech(
     text: string,
     voice: string,
-    instruction: string
+    instruction: string,
+    model: string
   ): Promise<{ audio: Buffer; usage: TTSUsage }>;
 }
 
 export function createOpenAIService(
   apiKey: string,
   maxTranscriptTokens: number = 16000,
-  maxExtractionTokens: number = 8000
+  maxExtractionTokens: number = 8000,
+  reasoningEffort?: ReasoningEffort
 ): OpenAIService {
   const client = new OpenAI({ apiKey });
 
@@ -41,8 +122,7 @@ export function createOpenAIService(
     try {
       const response = await client.chat.completions.create({
         model,
-        temperature: 0.7,
-        max_tokens: maxTranscriptTokens,
+        ...buildModelParams(model, maxTranscriptTokens, 0.7, reasoningEffort),
         messages: [
           { role: 'system', content: TRANSCRIPT_SYSTEM_PROMPT },
           {
@@ -50,7 +130,7 @@ export function createOpenAIService(
             content: `Article Title: ${title}\n\nArticle Content:\n${content}`,
           },
         ],
-        response_format: { type: 'json_object' },
+        response_format: TRANSCRIPT_RESPONSE_FORMAT,
       });
 
       const text = response.choices[0]?.message?.content ?? '[]';
@@ -86,8 +166,7 @@ export function createOpenAIService(
     try {
       const response = await client.chat.completions.create({
         model,
-        temperature: 0,
-        max_tokens: maxExtractionTokens,
+        ...buildModelParams(model, maxExtractionTokens, 0, reasoningEffort),
         messages: [
           { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
           { role: 'user', content: html },
@@ -117,10 +196,11 @@ export function createOpenAIService(
   async function textToSpeech(
     text: string,
     voice: string,
-    instruction: string
+    instruction: string,
+    model: string
   ): Promise<{ audio: Buffer; usage: TTSUsage }> {
     const response = await client.audio.speech.create({
-      model: 'gpt-4o-mini-tts',
+      model,
       voice: voice as
         | 'alloy'
         | 'ash'

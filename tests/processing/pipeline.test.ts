@@ -123,6 +123,7 @@ describe('processing pipeline', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -206,7 +207,7 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
@@ -237,7 +238,7 @@ describe('processing pipeline', () => {
       {} as any,
       {} as any,
       {} as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
@@ -287,7 +288,7 @@ describe('processing pipeline', () => {
       {} as any,
       {} as any,
       {} as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
@@ -362,7 +363,7 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
@@ -423,7 +424,7 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;
@@ -485,7 +486,7 @@ describe('processing pipeline', () => {
       mockTranscriber as any,
       mockTTSProcessor as any,
       mockAudioMerger as any,
-      { minContentLength: 500, maxRetries: 3 }
+      { minContentLength: 500, maxRetries: 3, tempDir, ttsModel: 'gpt-4o-mini-tts-2025-12-15' }
     );
 
     const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId) as any;

@@ -8,6 +8,26 @@ import {
   type LLMUsage,
 } from './llm-common.js';
 
+/**
+ * Sampling parameters (`temperature`, `top_p`, `top_k`) were removed from the Claude
+ * Opus 4.7+ / Sonnet 5 / Fable 5 generations and return a 400 if sent. Older models
+ * (Sonnet 4.5, Opus 4.6, Haiku 4.5) still accept them.
+ *
+ * This is an explicit deny-list rather than an allow-list: an unrecognised model keeps
+ * the historical behaviour instead of silently losing its temperature setting.
+ */
+const SAMPLING_UNSUPPORTED = [
+  /^claude-opus-5/,
+  /^claude-opus-4-[789]/,
+  /^claude-sonnet-5/,
+  /^claude-fable-5/,
+  /^claude-mythos-5/,
+];
+
+function supportsSampling(model: string): boolean {
+  return !SAMPLING_UNSUPPORTED.some((pattern) => pattern.test(model));
+}
+
 export interface AnthropicService {
   generateTranscript(
     content: string,
@@ -33,7 +53,7 @@ export function createAnthropicService(
       const response = await client.messages.create({
         model,
         max_tokens: maxTranscriptTokens,
-        temperature: 0.7,
+        ...(supportsSampling(model) ? { temperature: 0.7 } : {}),
         system: TRANSCRIPT_SYSTEM_PROMPT,
         messages: [
           {
@@ -74,7 +94,7 @@ export function createAnthropicService(
       const response = await client.messages.create({
         model,
         max_tokens: maxExtractionTokens,
-        temperature: 0,
+        ...(supportsSampling(model) ? { temperature: 0 } : {}),
         system: EXTRACT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: html }],
       });

@@ -79,6 +79,51 @@ FORMAT RULES:
 
 export const EXTRACT_SYSTEM_PROMPT = `Extract the main article content from the following HTML. Remove all navigation, ads, footers, comments, author bios, newsletter signups, and other non-article content. Return only the article text, preserving paragraph structure.`;
 
+// Control characters that should never appear in text destined for TTS. Excludes
+// tab/newline/carriage-return, which are harmless.
+const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/;
+const REPLACEMENT_CHAR = /\uFFFD/;
+
+// Anything outside Latin + common punctuation/symbol ranges.
+const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\s]/g;
+
+/**
+ * Guards against structurally-valid but semantically corrupt model output.
+ *
+ * Schema validation alone is not enough here. There is an open report of
+ * gpt-5.6-luna emitting degenerate tokens (foreign scripts, leaked reasoning) inside
+ * string values while the JSON stays schema-valid under `strict: true` - which means
+ * it would pass every structural check we have and then be read aloud by TTS.
+ *
+ * Hard-fails only on characters that are unambiguously wrong; suspected corruption
+ * is logged rather than thrown, so a legitimately non-English article is never
+ * blocked by a heuristic.
+ */
+function validateSegmentText(text: string, index: number): void {
+  if (text.trim().length === 0) {
+    throw new Error(`Transcript segment ${index} has empty or whitespace-only text`);
+  }
+  if (REPLACEMENT_CHAR.test(text)) {
+    throw new Error(`Transcript segment ${index} contains Unicode replacement characters`);
+  }
+  if (CONTROL_CHARS.test(text)) {
+    throw new Error(`Transcript segment ${index} contains control characters`);
+  }
+
+  const nonLatin = text.match(NON_LATIN);
+  if (!nonLatin) return;
+
+  // A genuinely non-English article is *mostly* non-Latin. A corrupted tail is a
+  // small minority embedded in otherwise-Latin text, which is the reported signature.
+  const ratio = nonLatin.length / text.length;
+  if (ratio < 0.1) {
+    console.warn(
+      `Transcript segment ${index}: ${nonLatin.length} non-Latin character(s) in otherwise-Latin text ` +
+        `- possible model output corruption. Tail: ${JSON.stringify(text.slice(-60))}`
+    );
+  }
+}
+
 /**
  * Parses and validates a transcript JSON string into TranscriptSegment array.
  * Supports both array format and object-with-array format.
@@ -119,6 +164,7 @@ export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[
       console.error(`Invalid segment at index ${i}:`, segment);
       throw new Error(`Invalid transcript segment structure at index ${i}`);
     }
+    validateSegmentText(segment.text, i);
   }
 
   console.log(`Successfully parsed ${segments.length} transcript segments`);
