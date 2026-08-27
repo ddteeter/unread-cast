@@ -1,8 +1,10 @@
 import OpenAI from 'openai';
 import { APIError, RateLimitError } from 'openai/error.mjs';
+import { zodResponseFormat } from 'openai/helpers/zod';
 import type { Transcript } from '../types/index.js';
 import {
   parseAndValidateTranscript,
+  TranscriptSchema,
   TRANSCRIPT_SYSTEM_PROMPT,
   EXTRACT_SYSTEM_PROMPT,
   type LLMUsage,
@@ -57,39 +59,19 @@ function buildModelParams(
  * This replaces the older `response_format: { type: 'json_object' }`, which only
  * guaranteed *some* JSON and left us stripping markdown fences and guessing at shape.
  *
+ * Derived from the shared `TranscriptSchema` so that the OpenAI and Anthropic paths
+ * are constrained by the same definition - otherwise a provider A/B measures request
+ * shaping as much as it measures the model.
+ *
  * We deliberately stay on Chat Completions rather than migrating to the Responses API:
  * as of 2026-08 there is an open report of gpt-5.6-luna emitting degenerate tokens
  * (foreign scripts, leaked reasoning) inside string values under Responses API +
  * structured outputs, while the identical request via Chat Completions is clean. The
  * corrupted output stays schema-valid, so it would pass validation and be spoken aloud.
+ * A separate report has Responses-API reasoning models inflating `usage.output_tokens`
+ * by up to ~9x - and billing it - which would defeat MONTHLY_BUDGET_USD outright.
  */
-const TRANSCRIPT_RESPONSE_FORMAT = {
-  type: 'json_schema' as const,
-  json_schema: {
-    name: 'podcast_transcript',
-    strict: true,
-    schema: {
-      type: 'object',
-      properties: {
-        transcript: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              speaker: { type: 'string', enum: ['HOST', 'AUTHOR', 'NARRATOR'] },
-              text: { type: 'string' },
-              instruction: { type: 'string' },
-            },
-            required: ['speaker', 'text', 'instruction'],
-            additionalProperties: false,
-          },
-        },
-      },
-      required: ['transcript'],
-      additionalProperties: false,
-    },
-  },
-};
+const TRANSCRIPT_RESPONSE_FORMAT = zodResponseFormat(TranscriptSchema, 'podcast_transcript');
 
 export interface OpenAIService {
   generateTranscript(

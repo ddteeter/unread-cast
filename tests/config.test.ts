@@ -60,13 +60,28 @@ describe('config', () => {
       expect(config.llmExtractionModel).toBe('claude-sonnet-4-5-20250929');
     });
 
-    it('falls back to the schema default when LLM_MODEL is unset too', async () => {
+    // With nothing pinned we pick the recommended pair rather than one model for both:
+    // the two stages have opposite cost profiles and extraction does not need Sonnet.
+    it('applies the recommended per-stage pair when LLM_MODEL is unset', async () => {
       setRequiredEnv();
 
       const { config } = await import('../src/config.js');
 
-      expect(config.llmTranscriptModel).toBe('claude-sonnet-4-5-20250929');
-      expect(config.llmExtractionModel).toBe('claude-sonnet-4-5-20250929');
+      expect(config.llmTranscriptModel).toBe('claude-sonnet-5');
+      expect(config.llmExtractionModel).toBe('claude-haiku-4-5');
+    });
+
+    // Pinning LLM_MODEL means the operator owns every stage. Leaving extraction on the
+    // recommended default here would route half the pipeline to a model they did not
+    // choose - and, if they also set LLM_PROVIDER=openai, to one the client cannot call.
+    it('does not apply the extraction default when LLM_MODEL is pinned', async () => {
+      setRequiredEnv();
+      process.env.LLM_MODEL = 'gpt-5.6-terra';
+
+      const { config } = await import('../src/config.js');
+
+      expect(config.llmTranscriptModel).toBe('gpt-5.6-terra');
+      expect(config.llmExtractionModel).toBe('gpt-5.6-terra');
     });
 
     it('lets each stage be overridden independently', async () => {

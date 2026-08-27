@@ -1,8 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { APIError } from '@anthropic-ai/sdk';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { Transcript } from '../types/index.js';
 import {
   parseAndValidateTranscript,
+  validateTranscriptSegments,
+  TranscriptSchema,
   TRANSCRIPT_SYSTEM_PROMPT,
   EXTRACT_SYSTEM_PROMPT,
   type LLMUsage,
@@ -28,6 +31,38 @@ function supportsSampling(model: string): boolean {
   return !SAMPLING_UNSUPPORTED.some((pattern) => pattern.test(model));
 }
 
+/**
+ * Models that run adaptive thinking when the `thinking` parameter is omitted.
+ *
+ * This matters for cost *and* for correctness. Thinking tokens bill as output, and
+ * they are drawn from the same `max_tokens` budget as the response - so on a long
+ * article, thinking can both inflate the bill and crowd out the transcript itself,
+ * truncating it mid-generation. This pipeline renders an article faithfully rather
+ * than reasoning about it, so thinking earns nothing here.
+ *
+ * Deny-list style, matching SAMPLING_UNSUPPORTED: an unrecognised model keeps the
+ * historical behaviour of sending nothing.
+ */
+const THINKING_ON_BY_DEFAULT = [
+  /^claude-opus-5/,
+  /^claude-sonnet-5/,
+  /^claude-fable-5/,
+  /^claude-mythos-5/,
+];
+
+/**
+ * Fable and Mythos always think - `{ type: 'disabled' }` is a 400 there, so the only
+ * option is to omit the parameter and pay for it. Neither is a sensible choice for
+ * this pipeline, but LLM_MODEL accepts any string, so don't hand back a hard error.
+ */
+const THINKING_NOT_DISABLEABLE = [/^claude-fable-5/, /^claude-mythos-5/];
+
+function thinkingParams(model: string): { thinking?: { type: 'disabled' } } {
+  if (!THINKING_ON_BY_DEFAULT.some((pattern) => pattern.test(model))) return {};
+  if (THINKING_NOT_DISABLEABLE.some((pattern) => pattern.test(model))) return {};
+  return { thinking: { type: 'disabled' } };
+}
+
 export interface AnthropicService {
   generateTranscript(
     content: string,
@@ -50,10 +85,15 @@ export function createAnthropicService(
     model: string
   ): Promise<{ transcript: Transcript; usage: LLMUsage }> {
     try {
-      const response = await client.messages.create({
+      // `parse` rather than `create`: it attaches `output_config.format` so the model
+      // is constrained to TranscriptSchema, and decodes the result for us. This is the
+      // non-beta path - no beta header required.
+      const response = await client.messages.parse({
         model,
         max_tokens: maxTranscriptTokens,
         ...(supportsSampling(model) ? { temperature: 0.7 } : {}),
+        ...thinkingParams(model),
+        output_config: { format: zodOutputFormat(TranscriptSchema) },
         system: TRANSCRIPT_SYSTEM_PROMPT,
         messages: [
           {
@@ -63,9 +103,14 @@ export function createAnthropicService(
         ],
       });
 
-      const textBlock = response.content.find((block) => block.type === 'text');
-      const text = textBlock?.type === 'text' ? textBlock.text : '[]';
-      const segments = parseAndValidateTranscript(text);
+      // parsed_output is null when the model returned something the schema could not
+      // decode. Fall back to the text block so a recoverable response (a fence-wrapped
+      // array from an operator-pinned model) does not cost the entry a retry.
+      const segments = response.parsed_output
+        ? validateTranscriptSegments(response.parsed_output.transcript)
+        : parseAndValidateTranscript(
+            response.content.find((block) => block.type === 'text')?.text ?? '[]'
+          );
 
       return {
         transcript: segments,
@@ -95,6 +140,7 @@ export function createAnthropicService(
         model,
         max_tokens: maxExtractionTokens,
         ...(supportsSampling(model) ? { temperature: 0 } : {}),
+        ...thinkingParams(model),
         system: EXTRACT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: html }],
       });

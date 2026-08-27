@@ -1,7 +1,27 @@
 // src/services/llm-common.ts
 // Shared utilities and prompts for LLM services (OpenAI and Anthropic)
 
+import { z } from 'zod';
 import type { TranscriptSegment } from '../types/index.js';
+
+/**
+ * The single source of truth for transcript shape.
+ *
+ * Both providers constrain their output against this schema - OpenAI via
+ * `zodResponseFormat` on Chat Completions, Anthropic via `zodOutputFormat` on
+ * `messages.parse`. Deriving both from one Zod object matters more than saving the
+ * duplication: the whole point of the per-stage model config is head-to-head A/B
+ * testing, and a provider whose request is shaped differently is not a fair comparison.
+ */
+export const TranscriptSchema = z.object({
+  transcript: z.array(
+    z.object({
+      speaker: z.enum(['HOST', 'AUTHOR', 'NARRATOR']),
+      text: z.string(),
+      instruction: z.string(),
+    })
+  ),
+});
 
 export interface LLMUsage {
   inputTokens: number;
@@ -128,6 +148,12 @@ function validateSegmentText(text: string, index: number): void {
  * Parses and validates a transcript JSON string into TranscriptSegment array.
  * Supports both array format and object-with-array format.
  * Handles markdown code blocks and extra whitespace from LLM responses.
+ *
+ * Both providers now constrain output against `TranscriptSchema`, so the fence
+ * stripping and dual-shape handling below should never fire on a default deployment.
+ * They are kept because `LLM_MODEL` accepts an arbitrary string: an operator can pin a
+ * model whose schema support is partial or absent, and a fence-wrapped response is a
+ * recoverable failure that should not cost an entry a retry.
  */
 export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[] {
   // Log the raw response for debugging
@@ -157,7 +183,18 @@ export function parseAndValidateTranscript(jsonText: string): TranscriptSegment[
     ? (parsed as TranscriptSegment[])
     : ((parsed as { transcript?: TranscriptSegment[] }).transcript ?? []);
 
-  // Validate each segment
+  return validateTranscriptSegments(segments);
+}
+
+/**
+ * Shape and content validation for an already-decoded transcript.
+ *
+ * Split out from `parseAndValidateTranscript` because the Anthropic path now goes
+ * through `messages.parse`, which hands back a decoded object rather than a JSON
+ * string. Schema enforcement guarantees the *shape*; these checks are about whether
+ * the strings inside it are safe to hand to TTS, which no schema can express.
+ */
+export function validateTranscriptSegments(segments: TranscriptSegment[]): TranscriptSegment[] {
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
     if (!segment.speaker || !segment.text || !segment.instruction) {

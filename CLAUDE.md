@@ -192,10 +192,14 @@ All config via environment variables, validated with Zod schema in `src/config.t
 
 **Optional:**
 - `LLM_PROVIDER` - Choose `anthropic` (default) or `openai`
-- `LLM_MODEL` - Specific model to use (default: `claude-sonnet-4-5-20250929`)
-  - **Anthropic**: `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-6`, `claude-sonnet-4-5-20250929` (default), `claude-haiku-4-5`
+- `LLM_MODEL` - Applies to every stage (default: `claude-sonnet-5`)
+  - **Anthropic**: `claude-opus-5`, `claude-sonnet-5` (default), `claude-opus-4-6`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5`
   - **OpenAI**: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.3`, `gpt-5.2`, `gpt-4o-mini`
-- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL` - Per-stage overrides, default to `LLM_MODEL`
+- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL` - Per-stage overrides (defaults:
+  `claude-sonnet-5`, `claude-haiku-4-5`). Each stage resolves as: its own variable, then
+  `LLM_MODEL` if pinned, then the default pair. Pinning `LLM_MODEL` therefore covers both
+  stages - see the comment in `parseEnv()` for why the extraction default must not survive
+  a pin.
 - `LLM_REASONING_EFFORT` - Only sent to the gpt-5 family; reasoning tokens bill as output
 - `TTS_MODEL` - Speech model (default: `gpt-4o-mini-tts-2025-12-15`)
 - `PUSHOVER_*` - Notifications for budget/failures
@@ -244,6 +248,20 @@ generations, and both services branch on the model string:
   generations; sending `temperature` there is a 400. See `supportsSampling()` in
   `src/services/anthropic.ts`. This is a deny-list, so unknown models keep the
   historical behaviour.
+- Opus 5 / Sonnet 5 / Fable 5 / Mythos 5 run **adaptive thinking when `thinking` is
+  omitted**. Thinking tokens bill as output *and* draw from the same `max_tokens` budget
+  as the response, so leaving it unset both inflates cost and can truncate a long
+  transcript mid-generation. This pipeline renders rather than reasons, so
+  `thinkingParams()` in `src/services/anthropic.ts` sends `{ type: 'disabled' }`.
+  Fable/Mythos always think and reject `disabled` with a 400, so they are excluded.
+
+**Structured outputs on both paths.** `TranscriptSchema` in `llm-common.ts` is the single
+source of truth for transcript shape: OpenAI derives its `response_format` from it via
+`zodResponseFormat`, Anthropic constrains `output_config.format` via `zodOutputFormat` on
+`messages.parse` (non-beta path, no beta header). Keep them derived from the one schema -
+the per-stage model config exists for provider A/B testing, and a provider whose request
+is shaped differently is not a fair comparison. `parseAndValidateTranscript` keeps its
+markdown-fence stripping as a fallback because `LLM_MODEL` accepts an arbitrary string.
 
 **Stay on Chat Completions, not the Responses API.** There is an open report of
 gpt-5.6-luna emitting degenerate tokens inside string values under Responses API +

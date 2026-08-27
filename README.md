@@ -79,10 +79,10 @@ The application automatically checks `/data/pricing.json` first, then falls back
 See `.env` file for all configuration options. Key settings:
 
 - `LLM_PROVIDER`: Choose between `anthropic` (default) or `openai`
-- `LLM_MODEL`: Model to use (default: `claude-sonnet-4-5-20250929`)
-  - **Anthropic models**: `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-6`, `claude-sonnet-4-5-20250929` (recommended), `claude-haiku-4-5`
+- `LLM_MODEL`: Model to use for every stage (default: `claude-sonnet-5`)
+  - **Anthropic models**: `claude-opus-5`, `claude-sonnet-5` (default), `claude-opus-4-6`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5`
   - **OpenAI models**: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.3`, `gpt-5.2`, `gpt-4o-mini`
-- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL`: Per-stage overrides, both defaulting to `LLM_MODEL`
+- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL`: Per-stage overrides (defaults: `claude-sonnet-5` and `claude-haiku-4-5`)
 - `LLM_REASONING_EFFORT`: `minimal` | `low` | `medium` | `high`, applied only to the gpt-5 family
 - `TTS_MODEL`: Speech model (default: `gpt-4o-mini-tts-2025-12-15`)
 - `MONTHLY_BUDGET_USD`: Monthly spending limit in USD
@@ -92,7 +92,15 @@ See `.env` file for all configuration options. Key settings:
 
 Transcript generation and HTML extraction have opposite shapes: the first is short-input
 and long-output, the second is a large HTML dump in and a modest amount of text out.
-Pointing them at different models can cut cost without touching transcript quality.
+Pointing them at different models can cut cost without touching transcript quality — which
+is why the defaults are already a pair: `claude-sonnet-5` for transcripts and
+`claude-haiku-4-5` for extraction.
+
+Each stage resolves in this order: its own variable, then `LLM_MODEL` if you set it, then
+the default pair. **Setting `LLM_MODEL` applies it to both stages**; the extraction default
+only applies when you have pinned nothing. That keeps a provider switch coherent —
+`LLM_PROVIDER=openai` with `LLM_MODEL=gpt-5.6-terra` will not leave extraction pointed at a
+Claude model the OpenAI client cannot call.
 
 One caveat when picking an extraction model: GPT-5.6 Luna's long-context recall (MRCR)
 is 41.3% against Terra's 89.6%, so despite its very low input price it is a poor fit for
@@ -111,6 +119,13 @@ The application requires a pricing configuration file containing pricing informa
 - Anthropic models (per million tokens)
 
 ### Upgrading an existing deployment
+
+The default LLM changed from `claude-sonnet-4-5-20250929` to `claude-sonnet-5` for
+transcripts and `claude-haiku-4-5` for extraction. Sonnet 5 is cheaper than Sonnet 4.5 on
+both token classes ($2/$10 vs $3/$15 per 1M) and a generation newer. **If you mount your
+own `/data/pricing.json`, add entries for both models before deploying** — the same
+fail-safe described below applies. Setting `LLM_MODEL=claude-sonnet-4-5-20250929`
+restores the previous behaviour for both stages.
 
 The default TTS model changed to `gpt-4o-mini-tts-2025-12-15`. Cost calculation throws
 on a model that has no pricing entry, so **if you mount your own `/data/pricing.json`

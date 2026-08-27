@@ -8,12 +8,17 @@
     "endpoint returns no usage object, so tokens are estimated from character count -",
     "see TTS_TOKEN_ESTIMATES in src/services/budget.ts for the derivation.",
     "chars_per_1m is the legacy flat per-character rate; it understates real spend by",
-    "~40% and is kept only so older pricing files keep loading."
+    "~40% and is kept only so older pricing files keep loading.",
+    "KNOWN GAP: OpenAI reprices a request above 272K input tokens at 2x input and 1.5x",
+    "output, applied to the whole request rather than to the tokens above the line.",
+    "There is no field for that here, so a request over the threshold is under-counted.",
+    "Only the LLM extraction fallback (raw HTML in) can plausibly reach 272K tokens.",
+    "GPT-5.6 Sol's $4/$20 is promotional pricing, held at least through 2026-11-21."
   ],
   "openai": {
     "gpt-5.6-sol": {
-      "input_per_1m": 5.0,
-      "output_per_1m": 30.0
+      "input_per_1m": 4.0,
+      "output_per_1m": 20.0
     },
     "gpt-5.6-terra": {
       "input_per_1m": 2.0,
