@@ -7,6 +7,7 @@ import type { OpenAIService, TTSUsage } from '../services/openai.js';
 export interface TTSConfig {
   voices: string[];
   tempDir: string;
+  model: string;
 }
 
 export interface TTSResult {
@@ -56,7 +57,12 @@ export function createTTSProcessor(openaiService: OpenAIService, config: TTSConf
           ? segment.instruction.substring(0, MAX_INSTRUCTION_LENGTH)
           : segment.instruction;
 
-      const { audio, usage } = await openaiService.textToSpeech(segment.text, voice, instruction);
+      const { audio, usage } = await openaiService.textToSpeech(
+        segment.text,
+        voice,
+        instruction,
+        config.model
+      );
 
       const filename = join(config.tempDir, `${entryId}_${i}.aac`);
       writeFileSync(filename, audio);

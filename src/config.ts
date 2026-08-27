@@ -1,6 +1,21 @@
 // src/config.ts
 import { z } from 'zod';
 
+/**
+ * Transcript generation is short-input / long-output and mostly literal: the model is
+ * re-rendering an article, not reasoning about it. Sonnet 5 is cheaper than Sonnet 4.5
+ * on both token classes ($2/$10 vs $3/$15 per 1M) and a generation newer, so it is a
+ * strict improvement over the previous default.
+ */
+const DEFAULT_LLM_MODEL = 'claude-sonnet-5';
+
+/**
+ * The LLM extraction fallback is the opposite shape - a large HTML dump in, plain text
+ * out - so its cost is dominated by input tokens and it does not need a Sonnet-tier
+ * model. Haiku 4.5 is $1/1M in against Sonnet 5's $2/1M.
+ */
+const DEFAULT_EXTRACTION_MODEL = 'claude-haiku-4-5';
+
 const configSchema = z.object({
   // Required
   apiKey: z.string().min(1, 'API_KEY environment variable is required'),
@@ -18,7 +33,16 @@ const configSchema = z.object({
   cronSchedule: z.string().default('0 */6 * * *'),
   anthropicApiKey: z.string().optional(),
   llmProvider: z.enum(['openai', 'anthropic']).default('anthropic'),
-  llmModel: z.string().default('claude-sonnet-4-5-20250929'),
+  llmModel: z.string().default(DEFAULT_LLM_MODEL),
+  // Per-stage model overrides. Transcript generation and HTML extraction have very
+  // different profiles (short input/long output vs. very long input/short output),
+  // so they are worth pointing at different models. Resolution when unset is handled
+  // in parseEnv() - see the comment there, the fallback is not symmetric.
+  llmTranscriptModel: z.string().optional(),
+  llmExtractionModel: z.string().optional(),
+  // Only sent to models that support it (the gpt-5 family). Ignored otherwise.
+  llmReasoningEffort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
+  ttsModel: z.string().default('gpt-4o-mini-tts-2025-12-15'),
   ttsVoices: z
     .array(z.string())
     .default([
@@ -54,7 +78,12 @@ const configSchema = z.object({
   maxRetries: z.number().default(5),
 });
 
-export type Config = z.infer<typeof configSchema>;
+// The per-stage model overrides are optional in the schema but always resolved to a
+// concrete value by parseEnv(), so consumers never have to repeat the fallback.
+export type Config = z.infer<typeof configSchema> & {
+  llmTranscriptModel: string;
+  llmExtractionModel: string;
+};
 
 function parseEnv(): Config {
   const raw = {
@@ -74,6 +103,15 @@ function parseEnv(): Config {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     llmProvider: process.env.LLM_PROVIDER as 'openai' | 'anthropic' | undefined,
     llmModel: process.env.LLM_MODEL,
+    llmTranscriptModel: process.env.LLM_TRANSCRIPT_MODEL,
+    llmExtractionModel: process.env.LLM_EXTRACTION_MODEL,
+    llmReasoningEffort: process.env.LLM_REASONING_EFFORT as
+      | 'minimal'
+      | 'low'
+      | 'medium'
+      | 'high'
+      | undefined,
+    ttsModel: process.env.TTS_MODEL,
     ttsVoices: process.env.TTS_VOICES?.split(',').map((v) => v.trim()),
     feedTitle: process.env.FEED_TITLE,
     feedAuthor: process.env.FEED_AUTHOR,
@@ -101,8 +139,21 @@ function parseEnv(): Config {
     maxRetries: process.env.MAX_RETRIES ? parseInt(process.env.MAX_RETRIES, 10) : undefined,
   };
 
+  // Whether the operator pinned LLM_MODEL themselves, as opposed to inheriting the
+  // default. If they pinned it they own every stage: quietly routing extraction to a
+  // model they did not choose would be surprising, and if they also switched providers
+  // it would be a model the configured client cannot call at all. The recommended
+  // per-stage pair therefore applies only when nothing is pinned.
+  const llmModelPinned = Boolean(process.env.LLM_MODEL);
+
   try {
-    return configSchema.parse(raw);
+    const parsed = configSchema.parse(raw);
+    return {
+      ...parsed,
+      llmTranscriptModel: parsed.llmTranscriptModel ?? parsed.llmModel,
+      llmExtractionModel:
+        parsed.llmExtractionModel ?? (llmModelPinned ? parsed.llmModel : DEFAULT_EXTRACTION_MODEL),
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const messages = error.issues.map((err) => {

@@ -42,7 +42,7 @@ describe('budget service', () => {
     expect(cost).toBeCloseTo(0.0075, 6);
   });
 
-  it('should calculate cost correctly for TTS', async () => {
+  it('should calculate cost for TTS using the legacy chars_per_1m rate', async () => {
     const { createBudgetService } = await import('../../src/services/budget.js');
     const service = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
 
@@ -50,6 +50,86 @@ describe('budget service', () => {
     const cost = service.calculateCost('openai_tts', 'gpt-4o-mini-tts', 10000);
     // 10000/1_000_000 * 12.0 = 0.12
     expect(cost).toBeCloseTo(0.12, 6);
+  });
+
+  describe('token-based TTS pricing', () => {
+    const tokenPricing = {
+      openai: {
+        'gpt-4o-mini-tts-2025-12-15': {
+          text_input_per_1m: 0.6,
+          audio_output_per_1m: 12.0,
+          est_audio_tokens_per_char: 1.39,
+          est_text_tokens_per_char: 0.25,
+        },
+      },
+    };
+
+    beforeEach(() => {
+      writeFileSync(join(tempDir, 'tokens.json'), JSON.stringify(tokenPricing));
+    });
+
+    it('should price a typical episode close to the published per-minute rate', async () => {
+      const { createBudgetService } = await import('../../src/services/budget.js');
+      const service = createBudgetService(db, join(tempDir, 'tokens.json'), 100);
+
+      // ~15 minutes of speech at ~900 chars/min.
+      const cost = service.calculateCost('openai_tts', 'gpt-4o-mini-tts-2025-12-15', 13500);
+
+      // OpenAI publishes ~$0.015/min, so 15 min should land near $0.225.
+      expect(cost).toBeCloseTo(0.225, 2);
+    });
+
+    it('should charge more than the legacy per-character model it replaces', async () => {
+      const { createBudgetService } = await import('../../src/services/budget.js');
+      const tokenService = createBudgetService(db, join(tempDir, 'tokens.json'), 100);
+      const legacyService = createBudgetService(db, join(tempDir, 'pricing.json'), 100);
+
+      const tokenCost = tokenService.calculateCost(
+        'openai_tts',
+        'gpt-4o-mini-tts-2025-12-15',
+        13500
+      );
+      const legacyCost = legacyService.calculateCost('openai_tts', 'gpt-4o-mini-tts', 13500);
+
+      // The legacy flat rate under-counted real spend by roughly 40%, which let
+      // actual cost run past MONTHLY_BUDGET_USD before canProcess() would block.
+      expect(tokenCost).toBeGreaterThan(legacyCost);
+      expect(legacyCost / tokenCost).toBeCloseTo(0.72, 1);
+    });
+
+    it('should fall back to built-in estimates when the entry omits them', async () => {
+      const { createBudgetService } = await import('../../src/services/budget.js');
+      const { TTS_TOKEN_ESTIMATES } = await import('../../src/services/budget.js');
+
+      writeFileSync(
+        join(tempDir, 'minimal.json'),
+        JSON.stringify({
+          openai: {
+            'gpt-4o-mini-tts-2025-12-15': {
+              text_input_per_1m: 0.6,
+              audio_output_per_1m: 12.0,
+            },
+          },
+        })
+      );
+      const service = createBudgetService(db, join(tempDir, 'minimal.json'), 100);
+
+      const cost = service.calculateCost('openai_tts', 'gpt-4o-mini-tts-2025-12-15', 10000);
+      const expected =
+        (10000 * TTS_TOKEN_ESTIMATES.audioTokensPerChar * 12.0) / 1_000_000 +
+        (10000 * TTS_TOKEN_ESTIMATES.textTokensPerChar * 0.6) / 1_000_000;
+
+      expect(cost).toBeCloseTo(expected, 6);
+    });
+
+    it('should still throw for a model missing from the pricing config', async () => {
+      const { createBudgetService } = await import('../../src/services/budget.js');
+      const service = createBudgetService(db, join(tempDir, 'tokens.json'), 100);
+
+      expect(() => service.calculateCost('openai_tts', 'gpt-4o-mini-tts', 1000)).toThrow(
+        /PRICING_CONFIG_MISSING/
+      );
+    });
   });
 
   it('should return correct budget status', async () => {

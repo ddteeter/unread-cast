@@ -4,6 +4,27 @@ import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3';
 import type { BudgetStatus, PricingConfig, UsageLog } from '../types/index.js';
 
+/**
+ * Fallback conversion from characters of speech to billed TTS tokens, used when a
+ * pricing entry does not carry its own estimates.
+ *
+ * Derivation, from OpenAI's published gpt-4o-mini-tts rates:
+ *   - ~$12.00 per 1M audio output tokens, and ~$0.015 per minute of generated audio
+ *     => $0.015 / ($12 / 1e6) = ~1,250 audio tokens per minute of speech.
+ *   - Speech runs ~150 words/min, and English averages ~6 characters per word
+ *     including the trailing space => ~900 characters per minute.
+ *   - => 1250 / 900 = ~1.39 audio tokens per character.
+ *   - Text input tokenises at roughly 4 characters per token => 0.25.
+ *
+ * Sanity check: a 15-minute episode is ~13,500 characters, which prices at
+ * ~$0.225 — matching 15 min x $0.015/min. These are estimates; if OpenAI exposes
+ * real usage on the speech endpoint, log that instead.
+ */
+export const TTS_TOKEN_ESTIMATES = {
+  audioTokensPerChar: 1.39,
+  textTokensPerChar: 0.25,
+} as const;
+
 export interface BudgetService {
   calculateCost(service: string, model: string, inputUnits: number, outputUnits?: number): number;
   logUsage(usage: Omit<UsageLog, 'id' | 'created_at'>): Promise<void>;
@@ -71,6 +92,27 @@ export function createBudgetService(
       }
 
       if (service === 'openai_tts') {
+        // Preferred path: model OpenAI's actual token-based TTS billing.
+        //
+        // The speech endpoint returns raw audio with no usage object, so we cannot
+        // read real token counts back. We estimate them from character count using
+        // the constants below, which is far closer than the flat per-character rate
+        // that preceded this (that under-counted by ~40% and let real spend run past
+        // MONTHLY_BUDGET_USD before canProcess() would block anything).
+        if (modelConfig.audio_output_per_1m !== undefined) {
+          const audioTokens =
+            inputUnits *
+            (modelConfig.est_audio_tokens_per_char ?? TTS_TOKEN_ESTIMATES.audioTokensPerChar);
+          const textTokens =
+            inputUnits *
+            (modelConfig.est_text_tokens_per_char ?? TTS_TOKEN_ESTIMATES.textTokensPerChar);
+          const audioCost = (audioTokens / 1_000_000) * modelConfig.audio_output_per_1m;
+          const textCost = (textTokens / 1_000_000) * (modelConfig.text_input_per_1m ?? 0);
+          return audioCost + textCost;
+        }
+
+        // Legacy flat per-character rate, kept so existing pricing.json files that
+        // predate the token fields keep working rather than hard-failing.
         const charsPerMillion = modelConfig.chars_per_1m ?? 0;
         return (inputUnits / 1_000_000) * charsPerMillion;
       } else {

@@ -64,7 +64,8 @@ async function main() {
   const openaiService = createOpenAIService(
     config.openaiApiKey,
     config.maxTranscriptTokens,
-    config.maxExtractionTokens
+    config.maxExtractionTokens,
+    config.llmReasoningEffort
   );
   const anthropicService = config.anthropicApiKey
     ? createAnthropicService(
@@ -77,13 +78,15 @@ async function main() {
   // Initialize processing components
   const transcriber = createTranscriber(openaiService, anthropicService, {
     provider: config.llmProvider,
-    model: config.llmModel,
+    transcriptModel: config.llmTranscriptModel,
+    extractionModel: config.llmExtractionModel,
     minContentLength: config.minContentLength,
   });
 
   const ttsProcessor = createTTSProcessor(openaiService, {
     voices: config.ttsVoices,
     tempDir,
+    model: config.ttsModel,
   });
 
   const audioMerger = createAudioMerger(r2Service, ffmpegService, tempDir);
@@ -101,6 +104,7 @@ async function main() {
       minContentLength: config.minContentLength,
       maxRetries: config.maxRetries,
       tempDir,
+      ttsModel: config.ttsModel,
     }
   );
 

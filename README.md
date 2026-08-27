@@ -79,19 +79,70 @@ The application automatically checks `/data/pricing.json` first, then falls back
 See `.env` file for all configuration options. Key settings:
 
 - `LLM_PROVIDER`: Choose between `anthropic` (default) or `openai`
-- `LLM_MODEL`: Model to use (default: `claude-sonnet-4-5-20250929`)
-  - **Anthropic models**: `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929` (recommended)
-  - **OpenAI models**: `gpt-5.2`, `gpt-5`, `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`
+- `LLM_MODEL`: Model to use for every stage (default: `claude-sonnet-5`)
+  - **Anthropic models**: `claude-opus-5`, `claude-sonnet-5` (default), `claude-opus-4-6`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5`
+  - **OpenAI models**: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.3`, `gpt-5.2`, `gpt-4o-mini`
+- `LLM_TRANSCRIPT_MODEL` / `LLM_EXTRACTION_MODEL`: Per-stage overrides (defaults: `claude-sonnet-5` and `claude-haiku-4-5`)
+- `LLM_REASONING_EFFORT`: `minimal` | `low` | `medium` | `high`, applied only to the gpt-5 family
+- `TTS_MODEL`: Speech model (default: `gpt-4o-mini-tts-2025-12-15`)
 - `MONTHLY_BUDGET_USD`: Monthly spending limit in USD
 - `PRICING_CONFIG_PATH`: Path to pricing config (default: `/data/pricing.json` with fallback to `/app/pricing.json`)
+
+### Choosing models per stage
+
+Transcript generation and HTML extraction have opposite shapes: the first is short-input
+and long-output, the second is a large HTML dump in and a modest amount of text out.
+Pointing them at different models can cut cost without touching transcript quality — which
+is why the defaults are already a pair: `claude-sonnet-5` for transcripts and
+`claude-haiku-4-5` for extraction.
+
+Each stage resolves in this order: its own variable, then `LLM_MODEL` if you set it, then
+the default pair. **Setting `LLM_MODEL` applies it to both stages**; the extraction default
+only applies when you have pinned nothing. That keeps a provider switch coherent —
+`LLM_PROVIDER=openai` with `LLM_MODEL=gpt-5.6-terra` will not leave extraction pointed at a
+Claude model the OpenAI client cannot call.
+
+One caveat when picking an extraction model: GPT-5.6 Luna's long-context recall (MRCR)
+is 41.3% against Terra's 89.6%, so despite its very low input price it is a poor fit for
+pulling an article out of a large page. Prefer Terra or better for that stage.
+
+Any model you configure must have a matching entry in `pricing.json` — cost calculation
+throws rather than guessing, so an unpriced model fails the entry instead of silently
+running unbudgeted.
 
 ## API Pricing
 
 The application requires a pricing configuration file containing pricing information for API calls:
 
 - OpenAI chat models (per million tokens)
-- OpenAI TTS models (per million characters)
+- OpenAI TTS models (per million tokens, for text input and audio output separately)
 - Anthropic models (per million tokens)
+
+### Upgrading an existing deployment
+
+The default LLM changed from `claude-sonnet-4-5-20250929` to `claude-sonnet-5` for
+transcripts and `claude-haiku-4-5` for extraction. Sonnet 5 is cheaper than Sonnet 4.5 on
+both token classes ($2/$10 vs $3/$15 per 1M) and a generation newer. **If you mount your
+own `/data/pricing.json`, add entries for both models before deploying** — the same
+fail-safe described below applies. Setting `LLM_MODEL=claude-sonnet-4-5-20250929`
+restores the previous behaviour for both stages.
+
+The default TTS model changed to `gpt-4o-mini-tts-2025-12-15`. Cost calculation throws
+on a model that has no pricing entry, so **if you mount your own `/data/pricing.json`
+(which takes precedence over the bundled `/app/pricing.json`), add an entry for the new
+model before deploying** — otherwise every entry will fail with
+`PRICING_CONFIG_MISSING`. Copy the `gpt-4o-mini-tts-2025-12-15` block from
+`data/pricing.json.example`, or set `TTS_MODEL` back to a model you already price.
+
+This is deliberate fail-safe behaviour: an unpriced model would otherwise run without
+counting against `MONTHLY_BUDGET_USD`.
+
+TTS is priced on tokens rather than characters because that is how OpenAI actually bills
+it. The speech endpoint returns no usage object, so token counts are estimated from
+character count — see `TTS_TOKEN_ESTIMATES` in `src/services/budget.ts` for the
+derivation. The older flat `chars_per_1m` field is still honoured for backward
+compatibility, but it under-counts real spend by roughly 40%, which lets actual cost run
+past `MONTHLY_BUDGET_USD` before processing is blocked.
 
 **For Docker deployments:** Pricing configuration is bundled in the image at `/app/pricing.json` with current rates. No setup required.
 

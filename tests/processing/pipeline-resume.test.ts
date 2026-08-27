@@ -153,6 +153,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -213,6 +214,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -271,6 +273,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -340,6 +343,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -404,6 +408,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -451,6 +456,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -499,6 +505,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 
@@ -542,6 +549,7 @@ describe('pipeline resume capability', () => {
         minContentLength: 500,
         maxRetries: 3,
         tempDir,
+        ttsModel: 'gpt-4o-mini-tts-2025-12-15',
       }
     );
 

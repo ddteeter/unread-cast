@@ -13,6 +13,8 @@ export interface PipelineConfig {
   minContentLength: number;
   maxRetries: number;
   tempDir: string;
+  /** Must match the model the TTS processor uses, so usage is costed correctly. */
+  ttsModel: string;
 }
 
 export interface ProcessingPipeline {
@@ -310,14 +312,10 @@ export function createProcessingPipeline(
         await budgetService.logUsage({
           entry_id: entryId,
           service: 'openai_tts',
-          model: 'gpt-4o-mini-tts',
+          model: config.ttsModel,
           input_units: ttsUsage.characters,
           output_units: null,
-          cost_usd: budgetService.calculateCost(
-            'openai_tts',
-            'gpt-4o-mini-tts',
-            ttsUsage.characters
-          ),
+          cost_usd: budgetService.calculateCost('openai_tts', config.ttsModel, ttsUsage.characters),
         });
 
         // Save segment count to DB
